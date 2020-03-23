@@ -40,6 +40,20 @@ int isDir(const char* name)
     }
     return -1;
 }
+int getListDir(const char* name){
+    DIR *d;
+    struct dirent *dir;
+    d = opendir(name);
+    if (d != NULL)
+    {
+        while ((dir = readdir(d)) != NULL)
+        {
+            printf("%s\n", dir->d_name);
+        }
+        closedir(d);
+    }
+    return 0;
+}
 
 int main (int argc, char *argv[])
 {
@@ -59,7 +73,11 @@ int main (int argc, char *argv[])
         printf("===> %s\n", argv[i]);
         printf("\tBlocos = %lld\n",s.st_blocks);
         printf("\tTamanho = %lli bytes\n", s.st_size);
-        printf("\tNo Hard Links = %hu\n", s.st_nlink);
+        printf("\tNumber Hard Links = %hu\n", s.st_nlink);
         printf("The file %s a symbolic link\n", (S_ISLNK(s.st_mode)) ? "is" : "is not");
+    }
+    if(isDir(argv[1]) == 0){// é um diretório
+        printf("AQUI\n");
+        getListDir(argv[1]);
     }
 }
