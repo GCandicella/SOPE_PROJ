@@ -9,6 +9,23 @@
 // Cada processo um diretório (subdiretórios => processos filhos)
 // Usar pipes para comunicação entre processos
 
+/*
+ * Campos obtidos do man2 stat :
+        st_dev ID of device containing file
+        st_ino inode number
+        st_mode protection
+        st_nlink number of hard links
+        st_uid user ID of owner
+        st_gid group ID of owner
+        st_rdev device ID (if special file)
+        st_size total size, in bytes
+        st_blksize blocksize for filesystem I/O
+        st_blocks number of blocks allocated
+        st_atime time of last access
+        st_mtime time of last modification
+        st_ctime time of last status change
+*/
+
 int isDir(const char* name)
 {
     DIR* directory = opendir(name);
@@ -42,21 +59,7 @@ int main (int argc, char *argv[])
         printf("===> %s\n", argv[i]);
         printf("\tBlocos = %lld\n",s.st_blocks);
         printf("\tTamanho = %lli bytes\n", s.st_size);
+        printf("\tNo Hard Links = %hu\n", s.st_nlink);
         printf("The file %s a symbolic link\n", (S_ISLNK(s.st_mode)) ? "is" : "is not");
-        /* Outros campos, obtidos do man2 stat :
-        st_dev ID of device containing file
-        st_ino inode number
-        st_mode protection
-        st_nlink number of hard links
-        st_uid user ID of owner
-        st_gid group ID of owner
-        st_rdev device ID (if special file)
-        st_size total size, in bytes
-        st_blksize blocksize for filesystem I/O
-        st_blocks number of blocks allocated
-        st_atime time of last access
-        st_mtime time of last modification
-        st_ctime time of last status change
-        */
     }
 }
