@@ -1,13 +1,11 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stdio.h>
 
 // Simular comando 'du'
 // Cada processo um diretório (subdiretórios => processos filhos)
 // Usar pipes para comunicação entre processos
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <stdio.h>
 
 int main (int argc, char *argv[])
 {
@@ -19,14 +17,15 @@ int main (int argc, char *argv[])
         return(1);
     }
 
-    for (i = 1; i< argc; i++){
+    for (i = 1; i < argc; i++){
         if (stat(argv[i], &s)){
             fprintf(stderr, "ERRO ao tentar obter stat de %s\n", argv[i]);
             continue;
         }
         printf("===> %s\n", argv[i]);
-        printf("\tTamanho = %lli\n", s.st_size);
-        printf("\tUltimo acesso = %li\n", s.st_atime);
+        printf("\tBlocos = %lld\n",s.st_blocks);
+        printf("\tTamanho = %lli bytes\n", s.st_size);
+        printf("The file %s a symbolic link\n", (S_ISLNK(s.st_mode)) ? "is" : "is not");
         /* Outros campos, obtidos do man2 stat :
         st_dev ID of device containing file
         st_ino inode number
