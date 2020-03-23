@@ -1,11 +1,28 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 
 // Simular comando 'du'
 // Cada processo um diretório (subdiretórios => processos filhos)
 // Usar pipes para comunicação entre processos
+
+int isDir(const char* name)
+{
+    DIR* directory = opendir(name);
+    if(directory != NULL)
+    {
+        closedir(directory);
+        return 0; // É um diretório
+    }
+    if(errno == ENOTDIR)
+    {
+        return 1;
+    }
+    return -1;
+}
 
 int main (int argc, char *argv[])
 {

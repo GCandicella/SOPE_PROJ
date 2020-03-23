@@ -1,5 +1,13 @@
-all: main.c
-	gcc main.c -o simpledu
+CC=gcc
+CFLAGS=-Wall
+DEPS=main.h
+OBJ=main.o
+
+simpledu: $(OBJ)
+	@ $(CC) -o $@ $^ $(CFLAGS)
+
+%.o: %.c $(DEPS)
+	@ $(CC) -c -o $@ $< $(CFLAGS)
 
 clean:
-	rm *.o simpledu
+	@ rm *.o simpledu
