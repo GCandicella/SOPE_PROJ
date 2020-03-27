@@ -71,9 +71,9 @@ int main (int argc, char *argv[])
             continue;
         }
         printf("===> %s\n", argv[i]);
-        printf("\tBlocos = %lld\n",s.st_blocks);
-        printf("\tTamanho = %lli bytes\n", s.st_size);
-        printf("\tNumber Hard Links = %hu\n", s.st_nlink);
+        printf("\tBlocos = %ld\n",s.st_blocks);
+        printf("\tTamanho = %li bytes\n", s.st_size);
+        printf("\tNumber Hard Links = %lu\n", s.st_nlink);
         printf("The file %s a symbolic link\n", (S_ISLNK(s.st_mode)) ? "is" : "is not");
     }
     if(isDir(argv[1]) == 0){// é um diretório
