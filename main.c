@@ -4,6 +4,8 @@
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
+#include "main.h"
 
 // Simular comando 'du'
 // Cada processo um diretório (subdiretórios => processos filhos)
@@ -26,58 +28,60 @@
         st_ctime time of last status change
 */
 
-int isDir(const char* name)
+int nArquivos(const char* name)
 {
     DIR* directory = opendir(name);
+    if(errno == ENOTDIR)
+        return !OK;
     if(directory != NULL)
     {
-        closedir(directory);
-        return 0; // É um diretório
-    }
-    if(errno == ENOTDIR)
-    {
-        return 1;
-    }
-    return -1;
-}
-int getListDir(const char* name){
-    DIR *d;
-    struct dirent *dir;
-    d = opendir(name);
-    if (d != NULL)
-    {
-        while ((dir = readdir(d)) != NULL)
+        struct dirent *dir;
+        int nArquivos = 0;
+        while ((dir = readdir(directory)) != NULL)
         {
-            printf("%s\n", dir->d_name);
+            if( strcmp(dir->d_name, "..") != 0 && strcmp(dir->d_name, ".") != 0)
+                nArquivos++;
         }
-        closedir(d);
+        closedir(directory);
+        return nArquivos;
     }
-    return 0;
+    return !OK;
 }
 
 int main (int argc, char *argv[])
 {
-    int i;
+    int blocos = 512;
     struct stat s;
-
+    char path[MAX_FILE_NAME];
+    
     if (argc < 2){
-        fprintf(stderr, "ERRO: faltou parametro\n");
-        return(1);
+        strcpy(path,"./");
+    }
+    else{
+        strcpy( path , argv[1] );
     }
 
-    for (i = 1; i < argc; i++){
-        if (stat(argv[i], &s)){
-            fprintf(stderr, "ERRO ao tentar obter stat de %s\n", argv[i]);
-            continue;
+    if (stat(path, &s)){
+        fprintf(stderr, "ERRO ao tentar obter stat de %s\n", path);    
+        return !OK;
+    }    
+    if(S_ISDIR(s.st_mode)){ // é um diretório
+        int n = nArquivos(path) ;
+        DIR *d;
+        d = opendir(path);
+        struct dirent *dir;
+        for(int i = 0; i < n ; i++){
+            dir = readdir(d);
+            if( strcmp(dir->d_name, "..") == 0 || strcmp(dir->d_name, ".") == 0)
+                continue;
+            printf("File %d: %s\n", i, dir->d_name);
         }
-        printf("===> %s\n", argv[i]);
-        printf("\tBlocos = %ld\n",s.st_blocks);
-        printf("\tTamanho = %li bytes\n", s.st_size);
-        printf("\tNumber Hard Links = %lu\n", s.st_nlink);
-        printf("The file %s a symbolic link\n", (S_ISLNK(s.st_mode)) ? "is" : "is not");
+        closedir(d);
     }
-    if(isDir(argv[1]) == 0){// é um diretório
-        printf("AQUI\n");
-        getListDir(argv[1]);
-    }
+
+    printf("===> %s\n", path);
+    printf("\tBlocos = %ld\n",s.st_blocks);
+    printf("The file %s a symbolic link\n", (S_ISLNK(s.st_mode)) ? "is" : "is not");
+
+    return OK;
 }
