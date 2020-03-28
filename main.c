@@ -4,6 +4,15 @@
 // Cada processo um diretório (subdiretórios => processos filhos)
 // Usar pipes para comunicação entre processos
 
+/**
+ * TODO
+ * Diretorio com o simpledu corre forever
+ * Arrumar prints
+ *      -> fazer uma matriz (tabela) com path e bloco para printar no final 
+ * FLAGSSSSS
+ * PIPES (PASTAS)
+*/
+
 /*
  * Campos obtidos do man2 stat :
         st_dev ID of device containing file
@@ -48,10 +57,12 @@ int main (int argc, char *argv[])
     int somarbytes = 0;
     
     if (argc < 2){
-        strcpy(path,".");
+        strcpy(path,"./");
     }
     else{
         strcpy( path , argv[1] );
+        if(path[strlen(path)-1] != '/')
+                strcat(path, "/"); // Add barra no final path/...
     }
 
     if (stat(path, &s)){
@@ -72,30 +83,36 @@ int main (int argc, char *argv[])
                 i--;
                 continue;
             }
-            strcpy(listadir[i], dir->d_name);
+            char new_item[MAX_FILE_NAME];
+            strcpy(new_item, path);
+            strcat(new_item, dir->d_name); 
+            strcpy(listadir[i], new_item);
         }
         closedir (directory);
 
-        // SOMAR BLOCOS
+        // SOMAR BLOCOS 
         struct stat s_item;
         for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
         {
             if (stat(listadir[i], &s_item)){
-                fprintf(stderr, "ERRO ao tentar obter stat de %s\n", path);    
+                fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);    
                 return !OK;
             }
             if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
+
                 somarblocos += s_item.st_blocks*(blocos/BLOCOS_DU);
                 somarbytes  += s_item.st_size;
             }
             else{ // E' um subdiretorio
-                if(fork() > 0){
+            pid_t pid = fork();
+                if(pid > 0){ //Filho investiga subdir
                     char *argv_sub[n];
                     argv_sub[0] = "./simpledu";
                     argv_sub[1] = listadir[i];
                     main(argc, argv_sub);
                 }
-                else{
+                else
+                {
                     wait(NULL);
                 }
             }
@@ -106,7 +123,7 @@ int main (int argc, char *argv[])
         somarbytes  = s.st_size;
     }
     printf("Blocos: %d\t%s\n", somarblocos, path);
-    printf("Size: %d\t%s\n", somarbytes, path);
+    //printf("Size: %d\t%s\n", somarbytes, path);
     
     return OK;
 }
