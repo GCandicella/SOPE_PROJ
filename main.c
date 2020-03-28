@@ -1,10 +1,3 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
 #include "main.h"
 
 // Simular comando 'du'
@@ -31,31 +24,31 @@
 int nArquivos(const char* name)
 {
     DIR* directory = opendir(name);
+    int n = 0;
     if(errno == ENOTDIR)
         return !OK;
     if(directory != NULL)
     {
         struct dirent *dir;
-        int nArquivos = 0;
-        while ((dir = readdir(directory)) != NULL)
-        {
-            if( strcmp(dir->d_name, "..") != 0 && strcmp(dir->d_name, ".") != 0)
-                nArquivos++;
+        while ((dir = readdir (directory)) != NULL){
+            n++;
         }
-        closedir(directory);
-        return nArquivos;
+        closedir (directory);
+        return n;
     }
     return !OK;
 }
 
 int main (int argc, char *argv[])
 {
-    int blocos = 512;
+    int blocos = 512; // Padrao STAT
     struct stat s;
     char path[MAX_FILE_NAME];
+    int somarblocos = 0;
+    int somarbytes = 0;
     
     if (argc < 2){
-        strcpy(path,"./");
+        strcpy(path,".");
     }
     else{
         strcpy( path , argv[1] );
@@ -66,22 +59,54 @@ int main (int argc, char *argv[])
         return !OK;
     }    
     if(S_ISDIR(s.st_mode)){ // é um diretório
-        int n = nArquivos(path) ;
-        DIR *d;
-        d = opendir(path);
+        somarblocos += s.st_blocks*(blocos/BLOCOS_DU);
+        somarbytes  += s.st_size;
+        int n = nArquivos(path);
+        char listadir[n][MAX_FILE_NAME];
+        DIR* directory = opendir(path);
         struct dirent *dir;
-        for(int i = 0; i < n ; i++){
-            dir = readdir(d);
-            if( strcmp(dir->d_name, "..") == 0 || strcmp(dir->d_name, ".") == 0)
+        for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
+        {
+            dir = readdir(directory);
+            if( (strcmp(dir->d_name, "..")==0) || (strcmp(dir->d_name, ".")==0) ){
+                i--;
                 continue;
-            printf("File %d: %s\n", i, dir->d_name);
+            }
+            strcpy(listadir[i], dir->d_name);
         }
-        closedir(d);
+        closedir (directory);
+
+        // SOMAR BLOCOS
+        struct stat s_item;
+        for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
+        {
+            if (stat(listadir[i], &s_item)){
+                fprintf(stderr, "ERRO ao tentar obter stat de %s\n", path);    
+                return !OK;
+            }
+            if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
+                somarblocos += s_item.st_blocks*(blocos/BLOCOS_DU);
+                somarbytes  += s_item.st_size;
+            }
+            else{ // E' um subdiretorio
+                if(fork() > 0){
+                    char *argv_sub[n];
+                    argv_sub[0] = "./simpledu";
+                    argv_sub[1] = listadir[i];
+                    main(argc, argv_sub);
+                }
+                else{
+                    wait(NULL);
+                }
+            }
+        }
     }
-
-    printf("===> %s\n", path);
-    printf("\tBlocos = %ld\n",s.st_blocks);
-    printf("The file %s a symbolic link\n", (S_ISLNK(s.st_mode)) ? "is" : "is not");
-
+    else{ // Arquivo individual
+        somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
+        somarbytes  = s.st_size;
+    }
+    printf("Blocos: %d\t%s\n", somarblocos, path);
+    printf("Size: %d\t%s\n", somarbytes, path);
+    
     return OK;
 }
