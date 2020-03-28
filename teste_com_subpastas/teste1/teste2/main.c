@@ -89,7 +89,7 @@ int process_dir(int argc, char *argv[]){
             char new_item[MAX_FILE_NAME];
             strcpy(new_item, path);
             strcat(new_item, dir->d_name); 
-            strcpy(listadir[i], new_item); // vetor com os paths dos items
+            strcpy(listadir[i], new_item);
         }
         closedir (directory);
 
@@ -113,11 +113,12 @@ int process_dir(int argc, char *argv[]){
                     argv_sub[0] = "./simpledu";
                     argv_sub[1] = listadir[i];
                     process_dir(argc, argv_sub);
-                    return OK;
                 }
                 else
-                { // Pai aguarda filho printar
+                {
                     wait(NULL);
+                    printf("PID: %d\n",getpid());
+                    return 0;
                 }
             }
         }
@@ -126,6 +127,7 @@ int process_dir(int argc, char *argv[]){
         somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
         somarbytes  = s.st_size;
     }
+    printf("PID: %d\t",getpid());
     printf("Blocos: %d\t%s\n", somarblocos, path);
     //printf("Size: %d\t%s\n", somarbytes, path);
     
