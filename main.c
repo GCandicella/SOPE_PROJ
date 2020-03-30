@@ -7,10 +7,7 @@
 /**
  * TODO
  * Diretorio com o simpledu sem path corre forever
- * Arrumar prints
- *      -> fazer uma matriz (tabela) com path e bloco para printar no final 
  * FLAGSSSSS
- * PIPES (PASTAS)
 */
 
 /*
@@ -50,7 +47,17 @@ int nArquivos(const char* name)
 int process_dir(int argc, char *argv[]);
 int main (int argc, char *argv[])
 {
+    char flags[N_FLAGS][MAX_SIZE_FLAG] = {0};
+    int pos = 0;
     //limpar o argv (flags, path, etc)
+    for (int i = 0; i < argc; i++)
+    {
+        if(argv[i][0] == '-'){ // Caracateriza uma flag
+            strcpy(flags[pos] , argv[i]);
+            pos++;
+        }
+    }
+    
     process_dir(argc, argv);
 }
 int process_dir(int argc, char *argv[]){
@@ -115,6 +122,7 @@ int process_dir(int argc, char *argv[]){
                 }
                 pid_t pid = fork();
                 if(pid == 0){ //Filho investiga subdir
+                    // CHECK MAX DEPTH (SE PROCESSAR, DECREMENTAR)
                     close(fd[READ]);
                     char *argv_sub[n];
                     argv_sub[0] = "./simpledu";

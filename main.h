@@ -12,9 +12,12 @@
 #define MAX_FILE_NAME 1000
 #define BLOCOS_DU 1024.0
 #define OK 0
+#define N_FLAGS 6
+#define MAX_SIZE_FLAG 15
 
 // PIPE defines
 #define READ  0
 #define WRITE 1
+
 
 #endif //SOPE_PROJ_MAIN_H
