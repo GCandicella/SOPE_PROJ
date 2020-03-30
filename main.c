@@ -6,7 +6,7 @@
 
 /**
  * TODO
- * Diretorio com o simpledu corre forever
+ * Diretorio com o simpledu sem path corre forever
  * Arrumar prints
  *      -> fazer uma matriz (tabela) com path e bloco para printar no final 
  * FLAGSSSSS
@@ -50,6 +50,7 @@ int nArquivos(const char* name)
 int process_dir(int argc, char *argv[]);
 int main (int argc, char *argv[])
 {
+    //limpar o argv (flags, path, etc)
     process_dir(argc, argv);
 }
 int process_dir(int argc, char *argv[]){
@@ -60,7 +61,7 @@ int process_dir(int argc, char *argv[]){
     int somarbytes = 0;
     
     if (argc < 2){
-        strcpy(path,"./");
+        strcpy( path , "./");
     }
     else{
         strcpy( path , argv[1] );
@@ -107,17 +108,30 @@ int process_dir(int argc, char *argv[]){
                 somarbytes  += s_item.st_size;
             }
             else{ // E' um subdiretorio
-            pid_t pid = fork();
+                int fd[2];
+                if(pipe(fd) < 0){
+                    fprintf(stderr, "Pipe Error");
+                    return !OK;
+                }
+                pid_t pid = fork();
                 if(pid == 0){ //Filho investiga subdir
+                    close(fd[READ]);
                     char *argv_sub[n];
                     argv_sub[0] = "./simpledu";
                     argv_sub[1] = listadir[i];
-                    process_dir(argc, argv_sub);
-                    return OK;
+                    int r = process_dir(argc, argv_sub);
+                    write(fd[WRITE], &r, sizeof(r));
+                    close(fd[WRITE]);
+                    return r + somarblocos;
                 }
                 else
                 { // Pai aguarda filho printar
+                    close(fd[WRITE]);
                     wait(NULL);
+                    int r;
+                    read(fd[READ], &r, sizeof(r));
+                    close(fd[READ]);
+                    somarblocos += r;
                 }
             }
         }
@@ -129,5 +143,5 @@ int process_dir(int argc, char *argv[]){
     printf("Blocos: %d\t%s\n", somarblocos, path);
     //printf("Size: %d\t%s\n", somarbytes, path);
     
-    return OK;
+    return somarblocos;
 }

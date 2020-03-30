@@ -13,12 +13,8 @@
 #define BLOCOS_DU 1024.0
 #define OK 0
 
-
-/**
- *
- * @param name - string to check if it is a dir or just a file
- * @return - number of files if it is a dir, -1 otherwise
- */
-int isDir(const char* name);
+// PIPE defines
+#define READ  0
+#define WRITE 1
 
 #endif //SOPE_PROJ_MAIN_H
