@@ -7,6 +7,8 @@
 /**
  * TODO
  * Diretorio com o simpledu sem path corre forever
+ * ./.git/logs/HEAD com erro na funcao STAT, o que fazer?
+ * Erro em alguns pipe (observar print no processo pai)
  * FLAGSSSSS
 */
 
@@ -44,37 +46,15 @@ int nArquivos(const char* name)
     }
     return !OK;
 }
-int process_dir(int argc, char *argv[]);
-int main (int argc, char *argv[])
-{
-    char flags[N_FLAGS][MAX_SIZE_FLAG] = {0};
-    int pos = 0;
-    //limpar o argv (flags, path, etc)
-    for (int i = 0; i < argc; i++)
-    {
-        if(argv[i][0] == '-'){ // Caracateriza uma flag
-            strcpy(flags[pos] , argv[i]);
-            pos++;
-        }
-    }
-    
-    process_dir(argc, argv);
-}
-int process_dir(int argc, char *argv[]){
+
+int process_dir(char path[]){
     int blocos = 512; // Padrao STAT
     struct stat s;
-    char path[MAX_FILE_NAME];
     int somarblocos = 0;
     int somarbytes = 0;
     
-    if (argc < 2){
-        strcpy( path , "./");
-    }
-    else{
-        strcpy( path , argv[1] );
-        if(path[strlen(path)-1] != '/')
-                strcat(path, "/"); // Add barra no final path/...
-    }
+
+    //printf("Path: %s\n", path);
 
     if (stat(path, &s)){
         fprintf(stderr, "ERRO ao tentar obter stat de %s\n", path);    
@@ -89,6 +69,7 @@ int process_dir(int argc, char *argv[]){
         struct dirent *dir;
         for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
         {
+            
             dir = readdir(directory);
             if( (strcmp(dir->d_name, "..")==0) || (strcmp(dir->d_name, ".")==0) ){
                 i--;
@@ -124,10 +105,10 @@ int process_dir(int argc, char *argv[]){
                 if(pid == 0){ //Filho investiga subdir
                     // CHECK MAX DEPTH (SE PROCESSAR, DECREMENTAR)
                     close(fd[READ]);
-                    char *argv_sub[n];
-                    argv_sub[0] = "./simpledu";
-                    argv_sub[1] = listadir[i];
-                    int r = process_dir(argc, argv_sub);
+                    char new_path[MAX_FILE_NAME*n];
+                    strcpy(new_path, listadir[i]);
+                    strcat(new_path, "/");
+                    int r = process_dir(new_path);
                     write(fd[WRITE], &r, sizeof(r));
                     close(fd[WRITE]);
                     return r + somarblocos;
@@ -139,6 +120,7 @@ int process_dir(int argc, char *argv[]){
                     int r;
                     read(fd[READ], &r, sizeof(r));
                     close(fd[READ]);
+                    //printf("Pai recebe %d\n", r);
                     somarblocos += r;
                 }
             }
@@ -152,4 +134,29 @@ int process_dir(int argc, char *argv[]){
     //printf("Size: %d\t%s\n", somarbytes, path);
     
     return somarblocos;
+}
+
+int main (int argc, char *argv[])
+{
+    char path[MAX_FILE_NAME];
+    if (argc < 2){
+        strcpy( path , "./");
+    }
+    else{
+        strcpy( path , argv[1] );
+        if(path[strlen(path)-1] != '/')
+                strcat(path, "/"); // Add barra no final path/...
+    }
+    char flags[N_FLAGS][MAX_SIZE_FLAG] = {0};
+    int pos = 0;
+    //limpar o argv (flags, path, etc)
+    for (int i = 0; i < argc; i++)
+    {
+        if(argv[i][0] == '-'){ // Caracateriza uma flag
+            strcpy(flags[pos] , argv[i]);
+            pos++;
+        }
+    }
+    
+    process_dir(path);
 }

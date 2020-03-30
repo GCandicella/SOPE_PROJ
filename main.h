@@ -20,4 +20,9 @@
 #define WRITE 1
 
 
+// Funcoes Auxiliares
+int nArquivos(const char* name);
+//int process_dir(char path[]);
+
+
 #endif //SOPE_PROJ_MAIN_H
