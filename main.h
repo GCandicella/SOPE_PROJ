@@ -4,12 +4,15 @@
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <wait.h>
+#include <stdbool.h>
+#include <ctype.h>
 #ifndef SOPE_PROJ_MAIN_H
 #define SOPE_PROJ_MAIN_H
 
-#define MAX_FILE_NAME 1000
+#define MAX_FILE_NAME 1024
 #define BLOCOS_DU 1024.0
 #define OK 0
 #define N_FLAGS 6
@@ -19,10 +22,19 @@
 #define READ  0
 #define WRITE 1
 
+typedef struct flags{
+	bool all;
+	bool bytes;
+	int block_size;
+	bool count_links;
+	bool dereference;
+	bool separate_dirs;
+	int max_depth;
+	char path[MAX_FILE_NAME];
+}flags;
 
 // Funcoes Auxiliares
 int nArquivos(const char* name);
 //int process_dir(char path[]);
-
 
 #endif //SOPE_PROJ_MAIN_H

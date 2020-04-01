@@ -11,7 +11,7 @@
  * Erro em alguns pipe (observar print no processo pai)
  * FLAGSSSSS
 */
-
+ 
 /*
  * Campos obtidos do man2 stat :
         st_dev ID of device containing file
@@ -28,6 +28,88 @@
         st_mtime time of last modification
         st_ctime time of last status change
 */
+
+flags* createFlags()
+{
+    flags* st_flags;
+    st_flags = malloc(sizeof(flags));
+    st_flags->all = false;
+    st_flags->bytes = false;
+    st_flags->count_links = false;
+    st_flags->dereference = false;
+    st_flags->separate_dirs = false;
+    st_flags->max_depth = -1;
+    strcpy(st_flags->path , "./");
+    return st_flags;
+}
+
+bool numStr(char* str)
+{
+    for(int i = 0; str[i] != '\0'; i++)
+    {
+        if(!isdigit(str[i])) return false;
+    }
+    return true;
+}
+
+int parseFlags(int argc, char *argv[], flags* st_flags)
+{
+    for(int i = 1; i < argc; i++)
+    {
+        if((strcmp(argv[i],"-a") == 0) || (strcmp(argv[i],"--all") == 0))
+        {
+            st_flags->all = true;
+        }
+        else if((strcmp(argv[i],"-b") == 0) || (strcmp(argv[i],"--bytes") == 0))
+        {
+            st_flags->bytes = true;
+        }
+        else if((strcmp(argv[i],"-l") == 0) || (strcmp(argv[i],"--count-links") == 0))
+        {
+            st_flags->count_links = true;
+        }
+        else if((strcmp(argv[i],"-L") == 0) || (strcmp(argv[i],"--dereference") == 0))
+        {
+            st_flags->dereference = true;
+        }
+        else if((strcmp(argv[i],"-S") == 0) || (strcmp(argv[i],"--separate-dirs") == 0))
+        {
+            st_flags->separate_dirs = true;
+        }
+        else if(strcmp(argv[i],"-B") == 0)
+        {
+            if(numStr(argv[i+1]))
+            {
+                st_flags->block_size = atoi(argv[i+1]);
+            }
+            else return !OK;
+            i++;
+        }
+        else if(strncmp(argv[i],"--block-size=",13) == 0)
+        {
+            if(numStr(argv[i]+13))
+            {
+                st_flags->block_size = atoi(argv[i]+13);
+            }
+            else return !OK;
+        }
+        else if(strncmp(argv[i],"--max-depth=",12) == 0)
+        {
+            if(numStr(argv[i]+12))
+            {
+                st_flags->max_depth = atoi(argv[i]+12);
+            }
+            else return !OK;
+        }
+        else
+        {
+            strcpy(st_flags->path,argv[i]);
+            if(st_flags->path[strlen(st_flags->path)-1] != '/')
+                strcat(st_flags->path, "/"); // Add barra no final path/...
+       }
+    }
+    return OK;
+}
 
 int nArquivos(const char* name)
 {
@@ -47,13 +129,12 @@ int nArquivos(const char* name)
     return !OK;
 }
 
-int process_dir(char path[]){
+/*int process_dir(char path[]){
     int blocos = 512; // Padrao STAT
     struct stat s;
     int somarblocos = 0;
     int somarbytes = 0;
     
-
     //printf("Path: %s\n", path);
 
     if (stat(path, &s)){
@@ -81,7 +162,95 @@ int process_dir(char path[]){
             strcpy(listadir[i], new_item); // vetor com os paths dos items
         }
         closedir (directory);
+ 
+        // SOMAR BLOCOS 
+        struct stat s_item;
+        for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
+        {
+            if (stat(listadir[i], &s_item)){
+                fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);    
+                return !OK;
+            }
+            if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
 
+                somarblocos += s_item.st_blocks*(blocos/BLOCOS_DU);
+                somarbytes  += s_item.st_size;
+            }
+            else{ // E' um subdiretorio
+                int fd[2];
+                if(pipe(fd) < 0){
+                    fprintf(stderr, "Pipe Error");
+                    return !OK;
+                }
+                pid_t pid = fork();
+                if(pid == 0){ //Filho investiga subdir
+                    // CHECK MAX DEPTH (SE PROCESSAR, DECREMENTAR)
+                    close(fd[READ]);
+                    char new_path[MAX_FILE_NAME*n];
+                    strcpy(new_path, listadir[i]);
+                    strcat(new_path, "/");
+                    int r = process_dir(new_path);
+                    write(fd[WRITE], &r, sizeof(r));
+                    close(fd[WRITE]);
+                    return r + somarblocos;
+                }
+                else
+                { // Pai aguarda filho printar
+                    close(fd[WRITE]);
+                    wait(NULL);
+                    int r;
+                    read(fd[READ], &r, sizeof(r));
+                    close(fd[READ]);
+                    //printf("Pai recebe %d\n", r);
+                    somarblocos += r;
+                }
+            }
+        }
+    }
+    else{ // Arquivo individual
+        somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
+        somarbytes  = s.st_size;
+    }
+    printf("Blocos: %d\t%s\n", somarblocos, path);
+    //printf("Size: %d\t%s\n", somarbytes, path);
+    
+    return somarblocos;
+}*/
+
+int process_dir(char path[]){
+    int blocos = 512; // Padrao STAT
+    struct stat s;
+    int somarblocos = 0;
+    int somarbytes = 0;
+    
+    //printf("Path: %s\n", path);
+
+    if (stat(path, &s)){
+        fprintf(stderr, "ERRO ao tentar obter stat de %s\n", path);    
+        return !OK;
+    }    
+    if(S_ISDIR(s.st_mode)){ // é um diretório
+        somarblocos += s.st_blocks*(blocos/BLOCOS_DU);
+        somarbytes  += s.st_size;
+        int n = nArquivos(path);
+        char listadir[n][MAX_FILE_NAME];
+        DIR* directory = opendir(path);
+        struct dirent *dir;
+        for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
+        {
+            
+            dir = readdir(directory);
+            if( (strcmp(dir->d_name, "..")==0) || (strcmp(dir->d_name, ".")==0) ){
+                i--;
+                continue;
+            }
+            char new_item[MAX_FILE_NAME];
+            strcpy(new_item, path);
+            strcat(new_item, dir->d_name); 
+            strcpy(listadir[i], new_item); // vetor com os paths dos items
+        }
+        closedir (directory);
+ 
         // SOMAR BLOCOS 
         struct stat s_item;
         for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
@@ -138,25 +307,10 @@ int process_dir(char path[]){
 
 int main (int argc, char *argv[])
 {
-    char path[MAX_FILE_NAME];
-    if (argc < 2){
-        strcpy( path , "./");
-    }
-    else{
-        strcpy( path , argv[1] );
-        if(path[strlen(path)-1] != '/')
-                strcat(path, "/"); // Add barra no final path/...
-    }
-    char flags[N_FLAGS][MAX_SIZE_FLAG] = {0};
-    int pos = 0;
-    //limpar o argv (flags, path, etc)
-    for (int i = 0; i < argc; i++)
+    flags* st_flags = createFlags();
+    if(parseFlags(argc, argv, st_flags) == !OK)
     {
-        if(argv[i][0] == '-'){ // Caracateriza uma flag
-            strcpy(flags[pos] , argv[i]);
-            pos++;
-        }
+        printf("Parameter error\n");
     }
-    
-    process_dir(path);
+    process_dir(st_flags->path);
 }
