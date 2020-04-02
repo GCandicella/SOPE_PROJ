@@ -206,6 +206,7 @@ int process_dir(char path[]){
 
 int main (int argc, char *argv[])
 {
+    printf("PID PAIZAO: %d\n", getpid());
     flags* st_flags = createFlags();
     if(parseFlags(argc, argv, st_flags) == !OK)
     {
