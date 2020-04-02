@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <stdbool.h>
 #include <ctype.h>
 #ifndef SOPE_PROJ_MAIN_H

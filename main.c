@@ -129,94 +129,6 @@ int nArquivos(const char* name)
     return !OK;
 }
 
-/*int process_dir(char path[]){
-    int blocos = 512; // Padrao STAT
-    struct stat s;
-    int somarblocos = 0;
-    int somarbytes = 0;
-    
-    //printf("Path: %s\n", path);
-
-    if (stat(path, &s)){
-        fprintf(stderr, "ERRO ao tentar obter stat de %s\n", path);    
-        return !OK;
-    }    
-    if(S_ISDIR(s.st_mode)){ // é um diretório
-        somarblocos += s.st_blocks*(blocos/BLOCOS_DU);
-        somarbytes  += s.st_size;
-        int n = nArquivos(path);
-        char listadir[n][MAX_FILE_NAME];
-        DIR* directory = opendir(path);
-        struct dirent *dir;
-        for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
-        {
-            
-            dir = readdir(directory);
-            if( (strcmp(dir->d_name, "..")==0) || (strcmp(dir->d_name, ".")==0) ){
-                i--;
-                continue;
-            }
-            char new_item[MAX_FILE_NAME];
-            strcpy(new_item, path);
-            strcat(new_item, dir->d_name); 
-            strcpy(listadir[i], new_item); // vetor com os paths dos items
-        }
-        closedir (directory);
- 
-        // SOMAR BLOCOS 
-        struct stat s_item;
-        for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
-        {
-            if (stat(listadir[i], &s_item)){
-                fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);    
-                return !OK;
-            }
-            if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
-
-                somarblocos += s_item.st_blocks*(blocos/BLOCOS_DU);
-                somarbytes  += s_item.st_size;
-            }
-            else{ // E' um subdiretorio
-                int fd[2];
-                if(pipe(fd) < 0){
-                    fprintf(stderr, "Pipe Error");
-                    return !OK;
-                }
-                pid_t pid = fork();
-                if(pid == 0){ //Filho investiga subdir
-                    // CHECK MAX DEPTH (SE PROCESSAR, DECREMENTAR)
-                    close(fd[READ]);
-                    char new_path[MAX_FILE_NAME*n];
-                    strcpy(new_path, listadir[i]);
-                    strcat(new_path, "/");
-                    int r = process_dir(new_path);
-                    write(fd[WRITE], &r, sizeof(r));
-                    close(fd[WRITE]);
-                    return r + somarblocos;
-                }
-                else
-                { // Pai aguarda filho printar
-                    close(fd[WRITE]);
-                    wait(NULL);
-                    int r;
-                    read(fd[READ], &r, sizeof(r));
-                    close(fd[READ]);
-                    //printf("Pai recebe %d\n", r);
-                    somarblocos += r;
-                }
-            }
-        }
-    }
-    else{ // Arquivo individual
-        somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
-        somarbytes  = s.st_size;
-    }
-    printf("Blocos: %d\t%s\n", somarblocos, path);
-    //printf("Size: %d\t%s\n", somarbytes, path);
-    
-    return somarblocos;
-}*/
-
 int process_dir(char path[]){
     int blocos = 512; // Padrao STAT
     struct stat s;
@@ -256,7 +168,7 @@ int process_dir(char path[]){
         for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
         {
             if (stat(listadir[i], &s_item)){
-                fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);    
+                fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);   
                 return !OK;
             }
             if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
@@ -265,32 +177,19 @@ int process_dir(char path[]){
                 somarbytes  += s_item.st_size;
             }
             else{ // E' um subdiretorio
-                int fd[2];
-                if(pipe(fd) < 0){
-                    fprintf(stderr, "Pipe Error");
-                    return !OK;
-                }
                 pid_t pid = fork();
                 if(pid == 0){ //Filho investiga subdir
                     // CHECK MAX DEPTH (SE PROCESSAR, DECREMENTAR)
-                    close(fd[READ]);
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
-                    int r = process_dir(new_path);
-                    write(fd[WRITE], &r, sizeof(r));
-                    close(fd[WRITE]);
-                    return r + somarblocos;
+                    char *args[]={"./simpledu", new_path, NULL}; 
+                    execv(args[0],args); 
+                    return !OK; // supostamente nunca entra nesse return -> exec failed
                 }
                 else
                 { // Pai aguarda filho printar
-                    close(fd[WRITE]);
                     wait(NULL);
-                    int r;
-                    read(fd[READ], &r, sizeof(r));
-                    close(fd[READ]);
-                    //printf("Pai recebe %d\n", r);
-                    somarblocos += r;
                 }
             }
         }
@@ -299,10 +198,10 @@ int process_dir(char path[]){
         somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
         somarbytes  = s.st_size;
     }
-    printf("Blocos: %d\t%s\n", somarblocos, path);
+    printf("PID: %d\tBlocos: %d\t%s\n", getpid(), somarblocos, path);
     //printf("Size: %d\t%s\n", somarbytes, path);
     
-    return somarblocos;
+    return OK;
 }
 
 int main (int argc, char *argv[])
