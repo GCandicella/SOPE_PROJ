@@ -178,10 +178,14 @@ int process_dir(char path[]){
             }
             else{ // E' um subdiretorio
                 pid_t pid;
+                int filepipe[2];
+                if(pipe(filepipe)  == -1)   {perror("Pipe Error"); exit(1);}
                 if ((pid = fork()) == -1)   {perror("Fork Error"); exit(1);}
                 else if(pid == 0){ //Filho investiga subdir
                     // CHECK MAX DEPTH (SE > 0, DECREMENTAR)
-                
+                    close(filepipe[READ]);
+                    dup2(filepipe[WRITE], STDOUT_FILENO);
+                    dup2(filepipe[WRITE], STDERR_FILENO);
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
@@ -192,7 +196,14 @@ int process_dir(char path[]){
                 }
                 else
                 { // Pai aguarda filho printar
+
                     wait(NULL);
+                    close(filepipe[WRITE]);
+                    char buffer;
+                    while (read(filepipe[0], &buffer, sizeof(buffer)) != 0)
+                    {
+                        printf("%c", buffer);
+                    }
                 }
             }
         }
