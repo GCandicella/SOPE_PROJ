@@ -177,14 +177,17 @@ int process_dir(char path[]){
                 somarbytes  += s_item.st_size;
             }
             else{ // E' um subdiretorio
-                pid_t pid = fork();
-                if(pid == 0){ //Filho investiga subdir
-                    // CHECK MAX DEPTH (SE PROCESSAR, DECREMENTAR)
+                pid_t pid;
+                if ((pid = fork()) == -1)   {perror("Fork Error"); exit(1);}
+                else if(pid == 0){ //Filho investiga subdir
+                    // CHECK MAX DEPTH (SE > 0, DECREMENTAR)
+                
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
                     char *args[]={"./simpledu", new_path, NULL}; 
-                    execv(args[0],args); 
+                    execvp(args[0],args); 
+                    perror("Exec");
                     return !OK; // supostamente nunca entra nesse return -> exec failed
                 }
                 else
@@ -206,11 +209,11 @@ int process_dir(char path[]){
 
 int main (int argc, char *argv[])
 {
-    printf("PID PAIZAO: %d\n", getpid());
     flags* st_flags = createFlags();
-    if(parseFlags(argc, argv, st_flags) == !OK)
+    if(parseFlags(argc, argv, st_flags) != OK)
     {
         printf("Parameter error\n");
     }
     process_dir(st_flags->path);
+    free(st_flags);
 }
