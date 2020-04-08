@@ -195,15 +195,17 @@ int process_dir(char path[]){
                     return !OK; // supostamente nunca entra nesse return -> exec failed
                 }
                 else
-                { // Pai aguarda filho printar
-
+                { // Pai printa filho que esta no pipe
                     wait(NULL);
                     close(filepipe[WRITE]);
                     char buffer;
+                    int r = 0;
+                    read(filepipe[0], &buffer, sizeof(buffer));
+                    r = buffer - '0';
+                    somarblocos += r;
+                    printf("%d", r);
                     while (read(filepipe[0], &buffer, sizeof(buffer)) != 0)
-                    {
                         printf("%c", buffer);
-                    }
                 }
             }
         }
@@ -212,7 +214,7 @@ int process_dir(char path[]){
         somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
         somarbytes  = s.st_size;
     }
-    printf("PID: %d\tBlocos: %d\t%s\n", getpid(), somarblocos, path);
+    printf("%d\t%s\n", somarblocos, path);
     //printf("Size: %d\t%s\n", somarbytes, path);
     
     return OK;
