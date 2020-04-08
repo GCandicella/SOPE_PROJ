@@ -15,8 +15,9 @@
 #define MAX_FILE_NAME 1024
 #define BLOCOS_DU 1024.0
 #define OK 0
-#define N_FLAGS 6
-#define MAX_SIZE_FLAG 15
+
+// FLAGS
+
 
 // PIPE defines
 #define READ  0

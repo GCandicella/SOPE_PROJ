@@ -144,6 +144,8 @@ int process_dir(char path[]){
     if(S_ISDIR(s.st_mode)){ // é um diretório
         somarblocos += s.st_blocks*(blocos/BLOCOS_DU);
         somarbytes  += s.st_size;
+
+        fprintf(stderr,"Somando dir base -----> %s\tPID %d\n",  path,  getpid());
         int n = nArquivos(path);
         char listadir[n][MAX_FILE_NAME];
         DIR* directory = opendir(path);
@@ -175,9 +177,12 @@ int process_dir(char path[]){
 
                 somarblocos += s_item.st_blocks*(blocos/BLOCOS_DU);
                 somarbytes  += s_item.st_size;
+
+                fprintf(stderr,"Somando not dir %s\tPID %d\n",  listadir[i], getpid());
             }
             else{ // E' um subdiretorio
                 pid_t pid;
+                int status;
                 int filepipe[2];
                 if(pipe(filepipe)  == -1)   {perror("Pipe Error"); exit(1);}
                 if ((pid = fork()) == -1)   {perror("Fork Error"); exit(1);}
@@ -185,22 +190,22 @@ int process_dir(char path[]){
                     // CHECK MAX DEPTH (SE > 0, DECREMENTAR)
                     close(filepipe[READ]);
                     dup2(filepipe[WRITE], STDOUT_FILENO);
-                    dup2(filepipe[WRITE], STDERR_FILENO);
+                    //dup2(filepipe[WRITE], STDERR_FILENO);
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
                     char *args[]={"./simpledu", new_path, NULL}; 
                     execvp(args[0],args); 
                     perror("Exec");
-                    return !OK; // supostamente nunca entra nesse return -> exec failed
                 }
                 else
                 { // Pai printa filho que esta no pipe
-                    wait(NULL);
+                    wait(&status);
                     close(filepipe[WRITE]);
+                    dup2(filepipe[READ], STDIN_FILENO);
                     char buffer;
                     int r = 0;
-                    read(filepipe[0], &buffer, sizeof(buffer));
+                    read(filepipe[READ], &buffer, sizeof(buffer));
                     r = buffer - '0';
                     somarblocos += r;
                     printf("%d", r);
@@ -213,8 +218,10 @@ int process_dir(char path[]){
     else{ // Arquivo individual
         somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
         somarbytes  = s.st_size;
+        fprintf(stderr,"Somando not dir %s\tPID %d\n",  path, getpid());
+            
     }
-    printf("%d\t%s\n", somarblocos, path);
+    printf("%d\t%s (PID %d)\n", somarblocos, path, getpid() );
     //printf("Size: %d\t%s\n", somarbytes, path);
     
     return OK;
