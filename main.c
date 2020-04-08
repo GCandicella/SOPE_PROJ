@@ -43,6 +43,22 @@ flags* createFlags()
     return st_flags;
 }
 
+int get_blocks(const char* str)
+{
+    char num_str[MAX_FILE_NAME];
+    int size = 0;
+    for(int i = 0; str[i] != '\0'; i++)
+    {
+     
+            if(str[i] == '\t')
+                break;
+            num_str[size] = str[i];
+            size++;
+
+    }
+    return atoi(num_str);
+}
+
 bool numStr(char* str)
 {
     for(int i = 0; str[i] != '\0'; i++)
@@ -203,13 +219,16 @@ int process_dir(char path[]){
                     close(filepipe[WRITE]);
                     dup2(filepipe[READ], STDIN_FILENO);
                     char buffer;
-                    int r = 0;
-                    read(filepipe[READ], &buffer, sizeof(buffer));
-                    r = buffer - '0';
-                    somarblocos += r;
-                    printf("%d", r);
+                    char msg[MAX_FILE_NAME];
+                    int i = 0;
                     while (read(filepipe[0], &buffer, sizeof(buffer)) != 0)
-                        printf("%c", buffer);
+                    {
+                        msg[i] = buffer;
+                        i++;
+                        fprintf(stderr,"%c", buffer);
+                    }
+                    msg[i] = '\0';
+                    somarblocos += get_blocks(msg);
                 }
             }
         }
@@ -219,7 +238,7 @@ int process_dir(char path[]){
         somarbytes  = s.st_size;
             
     }
-    printf("%d\t%s (PID %d)\n", somarblocos, path, getpid() );
+    printf("%d\t%s\n", somarblocos, path );
     //printf("Size: %d\t%s\n", somarbytes, path);
     
     return OK;
