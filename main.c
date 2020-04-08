@@ -104,8 +104,12 @@ int parseFlags(int argc, char *argv[], flags* st_flags)
         else
         {
             strcpy(st_flags->path,argv[i]);
-            if(st_flags->path[strlen(st_flags->path)-1] != '/')
-                strcat(st_flags->path, "/"); // Add barra no final path/...
+            struct stat s;
+            stat(argv[i], &s);
+            if(S_ISDIR(s.st_mode)){
+                if(st_flags->path[strlen(st_flags->path)-1] != '/')
+                    strcat(st_flags->path, "/"); // Add barra no final path/...
+            }
        }
     }
     return OK;
@@ -137,7 +141,7 @@ int process_dir(char path[]){
     
     //printf("Path: %s\n", path);
 
-    if (stat(path, &s)){
+    if (stat(path, &s) != 0){
         fprintf(stderr, "ERRO ao tentar obter stat de %s\n", path);    
         return !OK;
     }    
@@ -165,7 +169,7 @@ int process_dir(char path[]){
         }
         closedir (directory);
  
-        // SOMAR BLOCOS 
+        // SOMAR BLOCOS DE CADA FICHEIRO DENTRO DE NOSSO DIRETORIO
         struct stat s_item;
         for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
         {
@@ -178,7 +182,7 @@ int process_dir(char path[]){
                 somarblocos += s_item.st_blocks*(blocos/BLOCOS_DU);
                 somarbytes  += s_item.st_size;
 
-                fprintf(stderr,"Somando not dir %s\tPID %d\n",  listadir[i], getpid());
+                fprintf(stderr,"Somando not dir -----> %s\tPID %d\n",  listadir[i], getpid());
             }
             else{ // E' um subdiretorio
                 pid_t pid;
