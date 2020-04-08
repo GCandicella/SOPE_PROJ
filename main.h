@@ -27,7 +27,6 @@ typedef struct flags{
 	bool all;
 	bool bytes;
 	int block_size;
-	bool count_links;
 	bool dereference;
 	bool separate_dirs;
 	int max_depth;

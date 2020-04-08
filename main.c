@@ -35,10 +35,10 @@ flags* createFlags()
     st_flags = malloc(sizeof(flags));
     st_flags->all = false;
     st_flags->bytes = false;
-    st_flags->count_links = false;
     st_flags->dereference = false;
     st_flags->separate_dirs = false;
     st_flags->max_depth = -1;
+    st_flags->block_size = -1;
     strcpy(st_flags->path , "./");
     return st_flags;
 }
@@ -79,10 +79,6 @@ int parseFlags(int argc, char *argv[], flags* st_flags)
         else if((strcmp(argv[i],"-b") == 0) || (strcmp(argv[i],"--bytes") == 0))
         {
             st_flags->bytes = true;
-        }
-        else if((strcmp(argv[i],"-l") == 0) || (strcmp(argv[i],"--count-links") == 0))
-        {
-            st_flags->count_links = true;
         }
         else if((strcmp(argv[i],"-L") == 0) || (strcmp(argv[i],"--dereference") == 0))
         {
@@ -149,7 +145,59 @@ int nArquivos(const char* name)
     return !OK;
 }
 
-int process_dir(char path[]){
+void build_args(char* arg[], char* path, flags* st_flags)
+{
+    arg[0] = "./simpledu";
+    arg[1] = path;
+    int i = 2;
+    if(st_flags->all)
+    {
+        arg[i] = "-a";
+        i++;
+    }
+    if(st_flags->bytes)
+    {
+        arg[i] = "-b";
+        i++;
+    }
+    if(st_flags->dereference)
+    {
+        arg[i] = "-L";
+        i++;
+    }
+    if(st_flags->separate_dirs)
+    {
+        arg[i] = "-S";
+        i++;
+    }
+    if(st_flags->block_size != -1)
+    {
+        char str[12];
+        sprintf(str, "%d", st_flags->block_size);
+        arg[i] = "-B ";
+        strcat(arg[i],str);
+        i++;
+    }
+    if(st_flags->max_depth != -1)
+    {
+        
+        char str[12];
+        sprintf(str, "%d", st_flags->max_depth);
+        arg[i] = "--max-depth=";
+        strcat(arg[i],str);
+        i++;
+    }
+    arg[i] = NULL;
+}
+
+int process_dir(int argc, char *argv[]){
+    flags* st_flags = createFlags();
+    if(parseFlags(argc, argv, st_flags) != OK)
+    {
+        printf("Parameter error\n");
+        return !OK;
+    }
+
     int blocos = 512; // Padrao STAT
     struct stat s;
     int somarblocos = 0;
@@ -157,16 +205,16 @@ int process_dir(char path[]){
     
     //printf("Path: %s\n", path);
 
-    if (stat(path, &s) != 0){
-        fprintf(stderr, "ERRO ao tentar obter stat de %s\n", path);    
+    if (stat(st_flags->path, &s) != 0){
+        fprintf(stderr, "ERRO ao tentar obter stat de %s\n", st_flags->path);    
         return !OK;
     }    
     if(S_ISDIR(s.st_mode)){ // é um diretório
         somarblocos += s.st_blocks*(blocos/BLOCOS_DU);
         somarbytes  += s.st_size;
-        int n = nArquivos(path);
+        int n = nArquivos(st_flags->path);
         char listadir[n][MAX_FILE_NAME];
-        DIR* directory = opendir(path);
+        DIR* directory = opendir(st_flags->path);
         struct dirent *dir;
         for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
         {
@@ -177,7 +225,7 @@ int process_dir(char path[]){
                 continue;
             }
             char new_item[MAX_FILE_NAME];
-            strcpy(new_item, path);
+            strcpy(new_item, st_flags->path);
             strcat(new_item, dir->d_name); 
             strcpy(listadir[i], new_item); // vetor com os paths dos items
         }
@@ -209,7 +257,9 @@ int process_dir(char path[]){
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
-                    char *args[]={"./simpledu", new_path, NULL}; 
+                    char *args[10];
+                    build_args(args,new_path,st_flags); 
+                    free(st_flags);
                     execvp(args[0],args); 
                     fprintf(stderr, "Erro no exec\n");
                 }
@@ -238,19 +288,14 @@ int process_dir(char path[]){
         somarbytes  = s.st_size;
             
     }
-    printf("%d\t%s\n", somarblocos, path );
+    printf("%d\t%s\n", somarblocos, st_flags->path );
     //printf("Size: %d\t%s\n", somarbytes, path);
     
+    free(st_flags);
     return OK;
 }
 
 int main (int argc, char *argv[])
 {
-    flags* st_flags = createFlags();
-    if(parseFlags(argc, argv, st_flags) != OK)
-    {
-        printf("Parameter error\n");
-    }
-    process_dir(st_flags->path);
-    free(st_flags);
+    process_dir(argc,argv);
 }
