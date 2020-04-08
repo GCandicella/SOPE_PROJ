@@ -198,7 +198,7 @@ int process_dir(int argc, char *argv[]){
         return !OK;
     }
 
-    int blocos = 512; // Padrao STAT
+    int blocos = (st_flags->block_size == -1) ? 512 : st_flags->block_size; // Padrao STAT
     struct stat s;
     int somarblocos = 0;
     int somarbytes = 0;
@@ -242,6 +242,20 @@ int process_dir(int argc, char *argv[]){
             if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
                 somarblocos += s_item.st_blocks*(blocos/BLOCOS_DU);
                 somarbytes  += s_item.st_size;
+                if(st_flags->all)
+                {
+                    if(st_flags->bytes)
+                    {
+                        int b = s_item.st_size;
+                        fprintf(stderr,"%d\t%s\n", b, st_flags->path);
+                    }
+                    else
+                    {
+                        int b = s_item.st_blocks*(blocos/BLOCOS_DU);
+                        fprintf(stderr,"%d\t%s\n", b, st_flags->path);
+                    }
+                    //printf("%d\t%s\n", b, listadir[i]);
+                }
             }
             else{ // E' um subdiretorio
                 pid_t pid;
@@ -278,7 +292,7 @@ int process_dir(int argc, char *argv[]){
                         fprintf(stderr,"%c", buffer);
                     }
                     msg[i] = '\0';
-                    somarblocos += get_blocks(msg);
+                    if(!st_flags->separate_dirs)  somarblocos += get_blocks(msg);
                 }
             }
         }
@@ -286,9 +300,30 @@ int process_dir(int argc, char *argv[]){
     else{ // Arquivo individual
         somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
         somarbytes  = s.st_size;
+        if(st_flags->all)
+        {
+            if(st_flags->bytes)
+            {
+                int b = s.st_size;
+                fprintf(stderr,"%d\t%s\n", b, st_flags->path);
+            }
+            else
+            {
+                int b = s.st_blocks*(blocos/BLOCOS_DU);
+                fprintf(stderr,"%d\t%s\n", b, st_flags->path);
+            }
+            //printf("%d\t%s\n", b, st_flags->path);
+        }
             
     }
-    printf("%d\t%s\n", somarblocos, st_flags->path );
+    if(st_flags->bytes)
+    {
+        printf("%d\t%s\n", somarbytes, st_flags->path );
+    }
+    else
+    {
+        printf("%d\t%s\n", somarblocos, st_flags->path );
+    }
     //printf("Size: %d\t%s\n", somarbytes, path);
     
     free(st_flags);
