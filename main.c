@@ -148,8 +148,6 @@ int process_dir(char path[]){
     if(S_ISDIR(s.st_mode)){ // é um diretório
         somarblocos += s.st_blocks*(blocos/BLOCOS_DU);
         somarbytes  += s.st_size;
-
-        fprintf(stderr,"Somando dir base -----> %s\tPID %d\n",  path,  getpid());
         int n = nArquivos(path);
         char listadir[n][MAX_FILE_NAME];
         DIR* directory = opendir(path);
@@ -173,16 +171,13 @@ int process_dir(char path[]){
         struct stat s_item;
         for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
         {
-            if (stat(listadir[i], &s_item)){
+            if (stat(listadir[i], &s_item) != 0){
                 fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);   
                 return !OK;
             }
             if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
-
                 somarblocos += s_item.st_blocks*(blocos/BLOCOS_DU);
                 somarbytes  += s_item.st_size;
-
-                fprintf(stderr,"Somando not dir -----> %s\tPID %d\n",  listadir[i], getpid());
             }
             else{ // E' um subdiretorio
                 pid_t pid;
@@ -200,7 +195,7 @@ int process_dir(char path[]){
                     strcat(new_path, "/");
                     char *args[]={"./simpledu", new_path, NULL}; 
                     execvp(args[0],args); 
-                    perror("Exec");
+                    fprintf(stderr, "Erro no exec\n");
                 }
                 else
                 { // Pai printa filho que esta no pipe
@@ -222,7 +217,6 @@ int process_dir(char path[]){
     else{ // Arquivo individual
         somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
         somarbytes  = s.st_size;
-        fprintf(stderr,"Somando not dir %s\tPID %d\n",  path, getpid());
             
     }
     printf("%d\t%s (PID %d)\n", somarblocos, path, getpid() );
