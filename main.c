@@ -43,7 +43,7 @@ flags* createFlags()
     return st_flags;
 }
 
-int get_blocks(const char* str)
+int get_blocks_bytes(const char* str)
 {
     char num_str[MAX_FILE_NAME];
     int size = 0;
@@ -200,18 +200,14 @@ int process_dir(int argc, char *argv[]){
 
     int blocos = (st_flags->block_size == -1) ? 512 : st_flags->block_size; // Padrao STAT
     struct stat s;
-    int somarblocos = 0;
-    int somarbytes = 0;
-    
-    //printf("Path: %s\n", path);
+    int somatorio = 0;
 
     if (stat(st_flags->path, &s) != 0){
         fprintf(stderr, "ERRO ao tentar obter stat de %s\n", st_flags->path);    
         return !OK;
     }    
     if(S_ISDIR(s.st_mode)){ // é um diretório
-        somarblocos += s.st_blocks*(blocos/BLOCOS_DU);
-        somarbytes  += s.st_size;
+        somatorio += st_flags->bytes ? s.st_size : s.st_blocks*(blocos/BLOCOS_DU);
         int n = nArquivos(st_flags->path);
         char listadir[n][MAX_FILE_NAME];
         DIR* directory = opendir(st_flags->path);
@@ -240,21 +236,12 @@ int process_dir(int argc, char *argv[]){
                 return !OK;
             }
             if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
-                somarblocos += s_item.st_blocks*(blocos/BLOCOS_DU);
-                somarbytes  += s_item.st_size;
+                somatorio += st_flags->bytes ? s_item.st_size : s_item.st_blocks*(blocos/BLOCOS_DU);
                 if(st_flags->all)
                 {
-                    if(st_flags->bytes)
-                    {
-                        int b = s_item.st_size;
-                        fprintf(stderr,"%d\t%s\n", b, st_flags->path);
-                    }
-                    else
-                    {
-                        int b = s_item.st_blocks*(blocos/BLOCOS_DU);
-                        fprintf(stderr,"%d\t%s\n", b, st_flags->path);
-                    }
-                    //printf("%d\t%s\n", b, listadir[i]);
+                    int b = st_flags->bytes ? s_item.st_size : s_item.st_blocks*(blocos/BLOCOS_DU);
+                    fprintf(stderr,"%d\t%s\n", b, listadir[i]);
+                
                 }
             }
             else{ // E' um subdiretorio
@@ -292,38 +279,19 @@ int process_dir(int argc, char *argv[]){
                         fprintf(stderr,"%c", buffer);
                     }
                     msg[i] = '\0';
-                    if(!st_flags->separate_dirs)  somarblocos += get_blocks(msg);
+                    if(!st_flags->separate_dirs){
+                        somatorio   += get_blocks_bytes(msg);
+                    }
                 }
             }
         }
     }
     else{ // Arquivo individual
-        somarblocos = s.st_blocks*(blocos/BLOCOS_DU);
-        somarbytes  = s.st_size;
-        if(st_flags->all)
-        {
-            if(st_flags->bytes)
-            {
-                int b = s.st_size;
-                fprintf(stderr,"%d\t%s\n", b, st_flags->path);
-            }
-            else
-            {
-                int b = s.st_blocks*(blocos/BLOCOS_DU);
-                fprintf(stderr,"%d\t%s\n", b, st_flags->path);
-            }
-            //printf("%d\t%s\n", b, st_flags->path);
-        }
-            
+        somatorio = st_flags->bytes ? s.st_size : s.st_blocks*(blocos/BLOCOS_DU);
     }
-    if(st_flags->bytes)
-    {
-        printf("%d\t%s\n", somarbytes, st_flags->path );
-    }
-    else
-    {
-        printf("%d\t%s\n", somarblocos, st_flags->path );
-    }
+    
+        printf("%d\t%s\n", somatorio, st_flags->path );
+    
     //printf("Size: %d\t%s\n", somarbytes, path);
     
     free(st_flags);
