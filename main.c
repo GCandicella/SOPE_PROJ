@@ -172,11 +172,9 @@ void build_args(char* arg[], char* path, flags* st_flags)
     }
     if(st_flags->block_size != -1)
     {
-        char str[15];
-        sprintf(str, "%d", st_flags->block_size);
-        arg[i] = "-B ";
-        strcat(arg[i],str);
-        i++;
+        arg[i] = "-B";
+        sprintf(arg[i+1], "%d", st_flags->block_size);
+        i+=2;
     }
     if(st_flags->max_depth > -1)
     {
@@ -189,14 +187,50 @@ void build_args(char* arg[], char* path, flags* st_flags)
     arg[i] = NULL;
 }
 
-void sig_handler(int signo){
-    if(signo == SIGINT){
-        char c;
-        write(STDERR_FILENO, "Deseja Encerrar(Y/n)? ", 22);
-        read(STDERR_FILENO, &c, sizeof(c));
-        if(c == 'Y' || c == 'y')
-            exit(EXIT_FAILURE);
+void sigint_handler(int signo){
+    char c;
+    //write_log()
+    kill(-atoi(getenv("process_group_env")), SIGUSR1);
+    while(1){
+        write(STDERR_FILENO, "\nDeseja Encerrar(Y/n)? ", 22);
+        read(STDIN_FILENO, &c, sizeof(c));
+        if(c == 'Y' || c == 'y'){
+            kill(-atoi(getenv("process_group_env")), SIGTERM);    
+            break;
+        }
+        else
+        {
+            kill(-atoi(getenv("process_group_env")), SIGCONT); 
+            break;
+        }
     }
+}
+void sigsr1_handler(int signo){
+    pid_t ps = getpid();
+    if(atoi(getenv("process_group_env")) != ps){
+        //write_log()
+        raise(SIGSTOP);
+    }
+}
+void set_sinal(){
+    struct sigaction intAction;
+    intAction.sa_handler = sigint_handler;
+    sigemptyset(&intAction.sa_mask);
+    intAction.sa_flags = 0;
+
+    if(sigaction(SIGINT, &intAction, NULL) < 0){
+        fprintf(stderr, "Erro ao inicializar o sinal de interrupcao");
+    }
+
+    struct sigaction usr1Action;
+    usr1Action.sa_handler = sigsr1_handler;
+    sigemptyset(&usr1Action.sa_mask);
+    usr1Action.sa_flags = 0;
+
+    if(sigaction(SIGUSR1, &usr1Action, NULL) < 0){
+        fprintf(stderr, "Erro ao inicializar o sinal USR1");
+    }
+    
 }
 
 int process_dir(int argc, char *argv[]){
@@ -206,7 +240,7 @@ int process_dir(int argc, char *argv[]){
         write(STDERR_FILENO, "Parameter error\n", 16);
         return EXIT_FAILURE;
     }
-    int blocos = (st_flags->block_size == -1) ? 512 : st_flags->block_size; // Padrao STAT
+    int blocos = (st_flags->block_size == -1) ? BLOCOS_DU : st_flags->block_size; // Padrao STAT
     struct stat s;
     int somatorio = 0;
 
@@ -260,6 +294,7 @@ int process_dir(int argc, char *argv[]){
                 else if(pid == 0){ //Filho investiga subdir
                     close(filepipe[READ]);
                     dup2(filepipe[WRITE], STDOUT_FILENO);
+                    setpgid(getpid(), atoi(getenv("process_group_env")));
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
@@ -273,7 +308,6 @@ int process_dir(int argc, char *argv[]){
                 { // Pai printa filho que esta no pipe
                     wait(&status);
                     close(filepipe[WRITE]);
-                    dup2(filepipe[READ], STDIN_FILENO);
                     char buffer;
                     char msg[MAX_FILE_NAME];
                     int i = 0;
@@ -303,6 +337,11 @@ int process_dir(int argc, char *argv[]){
 
 int main (int argc, char *argv[])
 {
-    signal(SIGINT, sig_handler);
+    if(getenv("process_group_env") == NULL){
+        char pg[256];
+        sprintf(pg, "process_group_env=%d", getpid());
+        putenv(pg);
+    }
+    set_sinal();
     process_dir(argc,argv);
 }

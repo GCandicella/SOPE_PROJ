@@ -15,7 +15,6 @@
 
 #define MAX_FILE_NAME 1024
 #define BLOCOS_DU 1024.0
-#define OK 0
 
 // FLAGS
 
