@@ -63,7 +63,7 @@ bool numStr(char* str)
 {
     for(int i = 0; str[i] != '\0'; i++)
     {
-        if(!isdigit(str[i])) return false;
+        if(!isdigit(str[i]) && str[i] != '-') return false;
     }
     return true;
 }
@@ -172,18 +172,18 @@ void build_args(char* arg[], char* path, flags* st_flags)
     }
     if(st_flags->block_size != -1)
     {
-        char str[15];
-        sprintf(str, "%d", st_flags->block_size);
-        arg[i] = "-B ";
-        strcat(arg[i],str);
+        arg[i] = "-B";
+        i++;
+        int length = snprintf( NULL, 0, "%d", st_flags->block_size);
+        arg[i] = malloc(length + 1);
+        snprintf( arg[i], length + 1, "%d", st_flags->block_size );
         i++;
     }
-    if(st_flags->max_depth > -1)
+    if(st_flags->max_depth != -1)
     {
-        char str[15];
-        sprintf(str, "%d", st_flags->max_depth);
-        arg[i] = "--max-depth=";
-        strcat(arg[i],str);
+        int length = snprintf( NULL, 0, "%d", st_flags->max_depth);
+        arg[i] = malloc(length + 13);
+        snprintf( arg[i], length + 13, "--max-depth=%d", st_flags->max_depth );    
         i++;
     }
     arg[i] = NULL;
@@ -206,16 +206,17 @@ int process_dir(int argc, char *argv[]){
         write(STDERR_FILENO, "Parameter error\n", 16);
         return EXIT_FAILURE;
     }
-    int blocos = (st_flags->block_size == -1) ? 512 : st_flags->block_size; // Padrao STAT
+    float blocos = (st_flags->block_size == -1) ? 1024 : st_flags->block_size; // Padrao STAT
+
     struct stat s;
-    int somatorio = 0;
+    float somatorio = 0;
 
     if (stat(st_flags->path, &s) != 0){
         fprintf(stderr, "ERRO ao tentar obter stat de %s\n", st_flags->path);    
         return EXIT_FAILURE;
     }    
     if(S_ISDIR(s.st_mode)){ // é um diretório
-        somatorio += st_flags->bytes ? s.st_size : s.st_blocks*(blocos/BLOCOS_DU);
+        somatorio += st_flags->bytes ? s.st_size : s.st_blocks*(BLOCOS_DU/blocos);
         int n = nArquivos(st_flags->path);
         char listadir[n][MAX_FILE_NAME];
         DIR* directory = opendir(st_flags->path);
@@ -243,11 +244,11 @@ int process_dir(int argc, char *argv[]){
                 return EXIT_FAILURE;
             }
             if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
-                somatorio += st_flags->bytes ? s_item.st_size : s_item.st_blocks*(blocos/BLOCOS_DU);
+                somatorio += st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
                 if(st_flags->all)
                 {
-                    int b = st_flags->bytes ? s_item.st_size : s_item.st_blocks*(blocos/BLOCOS_DU);
-                    fprintf(stderr,"%d\t%s\n", b, listadir[i]);
+                    int b = st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
+                    fprintf(stderr,"%.0f\t%s\n", ceil(b), listadir[i]);
                 
                 }
             }
@@ -263,7 +264,8 @@ int process_dir(int argc, char *argv[]){
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
-                    char *args[10];
+                    char* args[10];
+                    if(st_flags->max_depth != -1)st_flags->max_depth--;
                     build_args(args,new_path,st_flags); 
                     free(st_flags);
                     execvp(args[0],args); 
@@ -292,9 +294,9 @@ int process_dir(int argc, char *argv[]){
         }
     }
     else{ // Arquivo individual
-        somatorio = st_flags->bytes ? s.st_size : s.st_blocks*(blocos/BLOCOS_DU);
+        somatorio = st_flags->bytes ? s.st_size : s.st_blocks*(BLOCOS_DU/blocos);
     }
-    printf("%d\t%s\n", somatorio, st_flags->path );
+    if(st_flags->max_depth == -1 || st_flags->max_depth > 0) printf("%.0f\t%s\n", ceil(somatorio), st_flags->path );
     
     
     free(st_flags);
