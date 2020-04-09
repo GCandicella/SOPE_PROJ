@@ -206,7 +206,6 @@ int process_dir(int argc, char *argv[]){
         write(STDERR_FILENO, "Parameter error\n", 16);
         return EXIT_FAILURE;
     }
-
     int blocos = (st_flags->block_size == -1) ? 512 : st_flags->block_size; // Padrao STAT
     struct stat s;
     int somatorio = 0;
@@ -223,7 +222,6 @@ int process_dir(int argc, char *argv[]){
         struct dirent *dir;
         for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
         {
-            
             dir = readdir(directory);
             if( (strcmp(dir->d_name, "..")==0) || (strcmp(dir->d_name, ".")==0) ){
                 i--;
@@ -262,7 +260,6 @@ int process_dir(int argc, char *argv[]){
                 else if(pid == 0){ //Filho investiga subdir
                     close(filepipe[READ]);
                     dup2(filepipe[WRITE], STDOUT_FILENO);
-                    //dup2(filepipe[WRITE], STDERR_FILENO);
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
@@ -288,7 +285,7 @@ int process_dir(int argc, char *argv[]){
                     }
                     msg[i] = '\0';
                     if(!st_flags->separate_dirs){
-                        somatorio   += get_blocks_bytes(msg);
+                        somatorio += get_blocks_bytes(msg);
                     }
                 }
             }
@@ -297,10 +294,8 @@ int process_dir(int argc, char *argv[]){
     else{ // Arquivo individual
         somatorio = st_flags->bytes ? s.st_size : s.st_blocks*(blocos/BLOCOS_DU);
     }
+    printf("%d\t%s\n", somatorio, st_flags->path );
     
-        printf("%d\t%s\n", somatorio, st_flags->path );
-    
-    //printf("Size: %d\t%s\n", somarbytes, path);
     
     free(st_flags);
     return EXIT_SUCCESS;
