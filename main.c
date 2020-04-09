@@ -94,7 +94,7 @@ int parseFlags(int argc, char *argv[], flags* st_flags)
             {
                 st_flags->block_size = atoi(argv[i+1]);
             }
-            else return !OK;
+            else return EXIT_FAILURE;
             i++;
         }
         else if(strncmp(argv[i],"--block-size=",13) == 0)
@@ -103,7 +103,7 @@ int parseFlags(int argc, char *argv[], flags* st_flags)
             {
                 st_flags->block_size = atoi(argv[i]+13);
             }
-            else return !OK;
+            else return EXIT_FAILURE;
         }
         else if(strncmp(argv[i],"--max-depth=",12) == 0)
         {
@@ -111,7 +111,7 @@ int parseFlags(int argc, char *argv[], flags* st_flags)
             {
                 st_flags->max_depth = atoi(argv[i]+12);
             }
-            else return !OK;
+            else return EXIT_FAILURE;
         }
         else
         {
@@ -124,7 +124,7 @@ int parseFlags(int argc, char *argv[], flags* st_flags)
             }
        }
     }
-    return OK;
+    return EXIT_SUCCESS;
 }
 
 int nArquivos(const char* name)
@@ -132,7 +132,7 @@ int nArquivos(const char* name)
     DIR* directory = opendir(name);
     int n = 0;
     if(errno == ENOTDIR)
-        return !OK;
+        return EXIT_SUCCESS;
     if(directory != NULL)
     {
         struct dirent *dir;
@@ -142,7 +142,7 @@ int nArquivos(const char* name)
         closedir (directory);
         return n;
     }
-    return !OK;
+    return EXIT_SUCCESS;
 }
 
 void build_args(char* arg[], char* path, flags* st_flags)
@@ -195,16 +195,16 @@ void sig_handler(int signo){
         write(STDERR_FILENO, "Deseja Encerrar(Y/n)? ", 22);
         read(STDERR_FILENO, &c, sizeof(c));
         if(c == 'Y' || c == 'y')
-            exit(1);
+            exit(EXIT_FAILURE);
     }
 }
 
 int process_dir(int argc, char *argv[]){
     flags* st_flags = createFlags();
-    if(parseFlags(argc, argv, st_flags) != OK)
+    if(parseFlags(argc, argv, st_flags) != EXIT_SUCCESS)
     {
         write(STDERR_FILENO, "Parameter error\n", 16);
-        return !OK;
+        return EXIT_FAILURE;
     }
 
     int blocos = (st_flags->block_size == -1) ? 512 : st_flags->block_size; // Padrao STAT
@@ -213,7 +213,7 @@ int process_dir(int argc, char *argv[]){
 
     if (stat(st_flags->path, &s) != 0){
         fprintf(stderr, "ERRO ao tentar obter stat de %s\n", st_flags->path);    
-        return !OK;
+        return EXIT_FAILURE;
     }    
     if(S_ISDIR(s.st_mode)){ // é um diretório
         somatorio += st_flags->bytes ? s.st_size : s.st_blocks*(blocos/BLOCOS_DU);
@@ -242,7 +242,7 @@ int process_dir(int argc, char *argv[]){
         {
             if (stat(listadir[i], &s_item) != 0){
                 fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);   
-                return !OK;
+                return EXIT_FAILURE;
             }
             if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
                 somatorio += st_flags->bytes ? s_item.st_size : s_item.st_blocks*(blocos/BLOCOS_DU);
@@ -303,7 +303,7 @@ int process_dir(int argc, char *argv[]){
     //printf("Size: %d\t%s\n", somarbytes, path);
     
     free(st_flags);
-    return OK;
+    return EXIT_SUCCESS;
 }
 
 int main (int argc, char *argv[])
