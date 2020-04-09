@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <signal.h>
 #ifndef SOPE_PROJ_MAIN_H
 #define SOPE_PROJ_MAIN_H
 

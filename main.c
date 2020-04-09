@@ -172,16 +172,15 @@ void build_args(char* arg[], char* path, flags* st_flags)
     }
     if(st_flags->block_size != -1)
     {
-        char str[12];
+        char str[15];
         sprintf(str, "%d", st_flags->block_size);
         arg[i] = "-B ";
         strcat(arg[i],str);
         i++;
     }
-    if(st_flags->max_depth != -1)
+    if(st_flags->max_depth > -1)
     {
-        
-        char str[12];
+        char str[15];
         sprintf(str, "%d", st_flags->max_depth);
         arg[i] = "--max-depth=";
         strcat(arg[i],str);
@@ -190,11 +189,21 @@ void build_args(char* arg[], char* path, flags* st_flags)
     arg[i] = NULL;
 }
 
+void sig_handler(int signo){
+    if(signo == SIGINT){
+        char c;
+        write(STDERR_FILENO, "Deseja Encerrar(Y/n)? ", 22);
+        read(STDERR_FILENO, &c, sizeof(c));
+        if(c == 'Y' || c == 'y')
+            exit(1);
+    }
+}
+
 int process_dir(int argc, char *argv[]){
     flags* st_flags = createFlags();
     if(parseFlags(argc, argv, st_flags) != OK)
     {
-        printf("Parameter error\n");
+        write(STDERR_FILENO, "Parameter error\n", 16);
         return !OK;
     }
 
@@ -251,7 +260,6 @@ int process_dir(int argc, char *argv[]){
                 if(pipe(filepipe)  == -1)   {perror("Pipe Error"); exit(1);}
                 if ((pid = fork()) == -1)   {perror("Fork Error"); exit(1);}
                 else if(pid == 0){ //Filho investiga subdir
-                    // CHECK MAX DEPTH (SE > 0, DECREMENTAR)
                     close(filepipe[READ]);
                     dup2(filepipe[WRITE], STDOUT_FILENO);
                     //dup2(filepipe[WRITE], STDERR_FILENO);
@@ -300,5 +308,6 @@ int process_dir(int argc, char *argv[]){
 
 int main (int argc, char *argv[])
 {
+    signal(SIGINT, sig_handler);
     process_dir(argc,argv);
 }
