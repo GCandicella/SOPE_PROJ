@@ -309,7 +309,8 @@ int process_dir(int argc, char *argv[]){
                     {
                         msg[i] = buffer;
                         i++;
-                        fprintf(stderr,"%c", buffer);
+                        //fprintf(stderr,"%c", buffer);
+                        write(atoi(getenv(BACKUPSTDOUT)), &buffer, sizeof(buffer));
                     }
                     msg[i] = '\0';
                     if(!st_flags->separate_dirs){
@@ -331,11 +332,15 @@ int process_dir(int argc, char *argv[]){
 
 int main (int argc, char *argv[])
 {
-    if(getenv("process_group_env") == NULL){
-        char pg[256];
-        sprintf(pg, "process_group_env=%d", getpid());
-        putenv(pg);
-    }
+    
+    char pg[256];
+    sprintf(pg, "process_group_env=%d", getpid());  
+    setenv("process_group_env", pg, 0);
     set_sinal();
+
+    int stdoutbackup = dup(STDOUT_FILENO);
+    char stdoutbackupaux[2];
+    sprintf(stdoutbackupaux, "%d", stdoutbackup);
+    setenv(BACKUPSTDOUT, stdoutbackupaux, 0 );
     process_dir(argc,argv);
 }

@@ -19,6 +19,7 @@
 #define OK 0
 #define MAX_DEPTH_REACHED 0
 
+#define BACKUPSTDOUT "BackupStdout"
 
 // PIPE defines
 #define READ  0
