@@ -10,13 +10,14 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <signal.h>
+#include <math.h>
 #ifndef SOPE_PROJ_MAIN_H
 #define SOPE_PROJ_MAIN_H
 
 #define MAX_FILE_NAME 1024
-#define BLOCOS_DU 1024.0
-
-// FLAGS
+#define BLOCOS_DU 512.0
+#define OK 0
+#define MAX_DEPTH_REACHED 0
 
 
 // PIPE defines

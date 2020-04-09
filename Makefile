@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall
+CFLAGS=-Wall -lm
 DEPS=main.h
 OBJ=main.o
 
