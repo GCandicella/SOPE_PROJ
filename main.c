@@ -264,7 +264,7 @@ int process_dir(int argc, char *argv[]){
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
-                    char* args[10];
+                    char* args[11];
                     if(st_flags->max_depth != -1)st_flags->max_depth--;
                     build_args(args,new_path,st_flags); 
                     free(st_flags);
