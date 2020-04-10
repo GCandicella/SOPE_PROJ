@@ -108,13 +108,7 @@ int parseFlags(int argc, char *argv[], flags* st_flags)
         else
         {
             strcpy(st_flags->path,argv[i]);
-            struct stat s;
-            stat(argv[i], &s);
-            if(S_ISDIR(s.st_mode)){
-                if(st_flags->path[strlen(st_flags->path)-1] != '/')
-                    strcat(st_flags->path, "/"); // Add barra no final path/...
-            }
-       }
+        }
     }
     return EXIT_SUCCESS;
 }
@@ -226,11 +220,16 @@ int process_dir(int argc, char *argv[]){
     struct stat s;
     float somatorio = 0;
 
-    if (stat(st_flags->path, &s) != 0){
+    if (lstat(st_flags->path, &s) != 0){
         fprintf(stderr, "ERRO ao tentar obter stat de %s\n", st_flags->path);    
         return EXIT_FAILURE;
-    }    
-    if(S_ISDIR(s.st_mode)){ // é um diretório
+    }
+    char path_copy[MAX_FILE_NAME]; strcpy(path_copy, st_flags->path );  
+    if(S_ISBLK(s.st_mode) && st_flags->dereference){}
+    else if(S_ISDIR(s.st_mode)){ // é um diretório simples
+        if(st_flags->path[strlen(st_flags->path)-1] != '/'){
+            strcat(st_flags->path, "/"); // Add barra no final path/...
+        }
         somatorio += st_flags->bytes ? s.st_size : s.st_blocks*(BLOCOS_DU/blocos);
         int n = nArquivos(st_flags->path);
         char listadir[n][MAX_FILE_NAME];
@@ -254,11 +253,13 @@ int process_dir(int argc, char *argv[]){
         struct stat s_item;
         for (int i = 0; i < n-2; i++) // n-2 compensa os casos ignorados
         {
-            if (stat(listadir[i], &s_item) != 0){
+            
+            if (lstat(listadir[i], &s_item) != 0){
                 fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);   
                 return EXIT_FAILURE;
             }
-            if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
+            if(S_ISBLK(s_item.st_mode) && st_flags->dereference) continue;
+            else if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
                 somatorio += st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
                 if(st_flags->all)
                 {
@@ -291,19 +292,10 @@ int process_dir(int argc, char *argv[]){
                 { // Pai printa filho que esta no pipe
                     wait(&status);
                     close(filepipe[WRITE]);
-                    char buffer;
-                    char msg[MAX_FILE_NAME];
-                    int i = 0;
-                    while (read(filepipe[0], &buffer, sizeof(buffer)) != 0)
-                    {
-                        msg[i] = buffer;
-                        i++;
-                        //fprintf(stderr,"%c", buffer);
-                        write(atoi(getenv(BACKUPSTDOUT)), &buffer, sizeof(buffer));
-                    }
-                    msg[i] = '\0';
+                    float buffer;
+                    read(filepipe[READ], &buffer, sizeof(buffer));
                     if(!st_flags->separate_dirs){
-                        somatorio += get_blocks_bytes(msg);
+                        somatorio += buffer;
                     }
                 }
             }
@@ -312,8 +304,30 @@ int process_dir(int argc, char *argv[]){
     else{ // Arquivo individual
         somatorio = st_flags->bytes ? s.st_size : s.st_blocks*(BLOCOS_DU/blocos);
     }
-    if(st_flags->max_depth == -1 || st_flags->max_depth > 0) printf("%.0f\t%s\n", ceil(somatorio), st_flags->path );
-    
+
+    if(getpid() == atoi(getenv("process_group_env"))){ // Escreve paizao 
+            char msgem[MAX_FILE_NAME];
+            strcpy(msgem, path_copy);
+            if(msgem[strlen(msgem)-1] == '/'){
+                msgem[strlen(msgem)-1] = '\0';
+            }
+            printf("%.0f\t%s \n", ceil(somatorio), path_copy );
+    }
+    else{ //  Escreve filho (pipe e tela)
+        write(STDOUT_FILENO, &somatorio, sizeof(somatorio)); // Escreve no pipe
+        if(st_flags->max_depth == -1 || st_flags->max_depth > 1){ // Escreve filho na tela     
+            char msgem[MAX_FILE_NAME];
+            sprintf(msgem, "%.0f", ceil(somatorio)); 
+            strcat(msgem, "\t");
+            strcat(msgem, st_flags->path);
+            strcat(msgem, "\n");
+            if(msgem[strlen(msgem)-2] == '/'){
+                msgem[strlen(msgem)-2] = '\n';
+                msgem[strlen(msgem)-1] = '\0';
+            }
+            write(atoi(getenv(BACKUPSTDOUT)), msgem, strlen(msgem));
+        }
+    }
     
     free(st_flags);
     return EXIT_SUCCESS;
@@ -331,5 +345,9 @@ int main (int argc, char *argv[])
     char stdoutbackupaux[2];
     sprintf(stdoutbackupaux, "%d", stdoutbackup);
     setenv(BACKUPSTDOUT, stdoutbackupaux, 0 );
+
+
     process_dir(argc,argv);
+
+    return EXIT_SUCCESS;
 }
