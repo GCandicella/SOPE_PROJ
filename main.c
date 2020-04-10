@@ -183,6 +183,7 @@ void sigint_handler(int signo){
     if( atoi(getenv(PROCESS_GRP)) == getpid() ){
         while(1){
             write(atoi(getenv(BACKUPSTDOUT)), "\nDeseja Encerrar(Y/n)? ", 22);
+            logfile_write("ENTRY", "\\nDeseja Encerrar(Y/n)? (22)");
             read(STDIN_FILENO, &c, sizeof(c));
             if(c == 'Y' || c == 'y'){
                 char aux[255];
@@ -289,10 +290,9 @@ int process_dir(int argc, char *argv[]){
             }
             else if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
                 somatorio += st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
-                if(st_flags->all)
-                {
+                if(st_flags->all){
                     int b = st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
-                    printf("%.0f\t%s\n", ceil(b), listadir[i]);
+                    printf("--> %.0f\t%s\n", ceil(b), listadir[i]);
                 
                 }
             }
@@ -360,6 +360,10 @@ int process_dir(int argc, char *argv[]){
                 msgem[strlen(msgem)-1] = '\0';
             }
             write(atoi(getenv(BACKUPSTDOUT)), msgem, strlen(msgem));
+            char aux[255];
+            msgem[strlen(msgem)-1] = '\0'; // TRunca o \n
+            sprintf(aux, "(%s (%ld))", msgem, strlen(msgem));
+            logfile_write("ENTRY", aux);
         }
     }
     
@@ -367,20 +371,13 @@ int process_dir(int argc, char *argv[]){
     return EXIT_SUCCESS;
 }
 
+
 char* cat_args(int argc, char* argv[])
 {
-    flags* st_flags = createFlags();
-    if(parseFlags(argc, argv, st_flags) != EXIT_SUCCESS)
-    {
-        write(STDERR_FILENO, "Parameter error\n", 16);
-        return "err";
-    }
-
     int size = 1;
     for(int i = 0; i < argc; i++)
     {
-        if(strcmp(st_flags->path,argv[i]) == 0) continue;
-        for(int j = 0; argv[i][j] != '\0'; j++)
+         for(int j = 0; argv[i][j] != '\0'; j++)
         {
             size ++;
         }
@@ -391,12 +388,11 @@ char* cat_args(int argc, char* argv[])
     str[0] = '(';
     for(int i = 0; i < argc; i++)
     {
-        if(strcmp(st_flags->path,argv[i]) == 0) continue;
+        if(i != 0) strcat(str,", ");
         strcat(str,argv[i]);
-        if(i != argc-1) strcat(str,", ");
     }
     strcat(str,")");
-    str[size] = '\0';
+    strcat(str,"\0");
     return str;
 }
 
@@ -413,6 +409,12 @@ int main (int argc, char *argv[])
     sprintf(stdoutbackupaux, "%d", stdoutbackup);
     setenv(BACKUPSTDOUT, stdoutbackupaux, 0 );
 
+    struct timespec requireTime;
+    char time_nsec[255];
+    clock_gettime(CLOCK_MONOTONIC_RAW, &requireTime);
+    sprintf(time_nsec, "%ld", requireTime.tv_nsec);
+    setenv(STARTTIME, time_nsec, 0);
+
     int fd;
     setenv(LOGFILE, "output.log", 0 ); // define output.log como env para logfile se nao existir
     if(getpid() == atoi(getenv(PROCESS_GRP)))
@@ -422,12 +424,7 @@ int main (int argc, char *argv[])
     char fdchar[2];
     sprintf(fdchar, "%d", fd);
     setenv(LOG_DESC, fdchar, 0);
-
-    struct timespec requireTime;
-    char time_nsec[255];
-    clock_gettime(CLOCK_MONOTONIC_RAW, &requireTime);
-    sprintf(time_nsec, "%ld", requireTime.tv_nsec);
-    setenv(STARTTIME, time_nsec, 0);
+    logfile_write("CREATE", cat_args(argc, argv));
 
     process_dir(argc,argv);
 
