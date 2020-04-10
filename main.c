@@ -189,6 +189,8 @@ void sigint_handler(int signo){
                 sprintf(aux, "SIGTERM (%d)", atoi(getenv(PROCESS_GRP)));
                 logfile_write("SEND_SIGNAL", aux);
                 kill(-atoi(getenv(PROCESS_GRP)), SIGTERM);  
+                logfile_write("EXIT", "1");
+                exit(1);
                 break;
             }
             else
@@ -298,8 +300,8 @@ int process_dir(int argc, char *argv[]){
                 pid_t pid;
                 int status;
                 int filepipe[2];
-                if(pipe(filepipe)  == -1)   {perror("Pipe Error"); exit(1);}
-                if ((pid = fork()) == -1)   {perror("Fork Error"); exit(1);}
+                if(pipe(filepipe)  == -1)   {perror("Pipe Error"); logfile_write("EXIT", "1"); exit(1);}
+                if ((pid = fork()) == -1)   {perror("Fork Error"); logfile_write("EXIT", "1"); exit(1);}
                 else if(pid == 0){ //Filho investiga subdir
                     close(filepipe[READ]);
                     dup2(filepipe[WRITE], STDOUT_FILENO);
