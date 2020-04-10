@@ -282,7 +282,7 @@ int process_dir(int argc, char *argv[]){
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
                     char* args[11];
-                    if(st_flags->max_depth != -1)st_flags->max_depth--;
+                    if(st_flags->max_depth > 0)st_flags->max_depth--;
                     build_args(args,new_path,st_flags); 
                     free(st_flags);
                     execvp(args[0],args); 
@@ -315,7 +315,7 @@ int process_dir(int argc, char *argv[]){
     }
     else{ //  Escreve filho (pipe e tela)
         write(STDOUT_FILENO, &somatorio, sizeof(somatorio)); // Escreve no pipe
-        if(st_flags->max_depth == -1 || st_flags->max_depth > 1){ // Escreve filho na tela     
+        if(st_flags->max_depth == -1 || st_flags->max_depth > 0){ // Escreve filho na tela     
             char msgem[MAX_FILE_NAME];
             sprintf(msgem, "%.0f", ceil(somatorio)); 
             strcat(msgem, "\t");
