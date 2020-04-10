@@ -11,15 +11,21 @@
 #include <ctype.h>
 #include <signal.h>
 #include <math.h>
+#include <time.h>
+#include <fcntl.h> 
 #ifndef SOPE_PROJ_MAIN_H
 #define SOPE_PROJ_MAIN_H
 
 #define MAX_FILE_NAME 1024
 #define BLOCOS_DU 512.0
-#define OK 0
 #define UNDEFINED_FLAG -5
 
+// Variaveis de Ambiente
+#define PROCESS_GRP "process_group_env"
+#define LOGFILE "LOG_FILENAME"
+#define LOG_DESC "log_desc"
 #define BACKUPSTDOUT "BackupStdout"
+#define STARTTIME "start_time"
 
 // PIPE defines
 #define READ  0

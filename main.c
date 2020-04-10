@@ -60,6 +60,17 @@ bool numStr(char* str)
     return true;
 }
 
+bool logfile_write(const char *evento, const char * info){
+    struct timespec requestTime;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &requestTime);
+
+    char mensagem[MAX_FILE_NAME];
+    //instant – pid – action – info
+    sprintf(mensagem, "%.2f - %d - %s - %s\n", (requestTime.tv_nsec - atoi(getenv(STARTTIME)))/1000000.0 , getpid(), evento, info);
+    write(atoi(getenv(LOG_DESC)), mensagem, strlen(mensagem));
+    return EXIT_SUCCESS;
+}
+
 int parseFlags(int argc, char *argv[], flags* st_flags)
 {
     for(int i = 1; i < argc; i++)
@@ -177,21 +188,21 @@ void build_args(char* arg[], char* path, flags* st_flags)
 
 void sigint_handler(int signo){
     char c;
-    //write_log()
-    if( atoi(getenv("process_group_env")) != getpid() ){
+    logfile_write("RECV_SIGNAL", "SIGINT");
+    if( atoi(getenv(PROCESS_GRP)) != getpid() ){
         raise(SIGSTOP);
     }
-    if( atoi(getenv("process_group_env")) == getpid() ){
+    if( atoi(getenv(PROCESS_GRP)) == getpid() ){
         while(1){
             write(atoi(getenv(BACKUPSTDOUT)), "\nDeseja Encerrar(Y/n)? ", 22);
             read(STDIN_FILENO, &c, sizeof(c));
             if(c == 'Y' || c == 'y'){
-                kill(-atoi(getenv("process_group_env")), SIGTERM);    
+                kill(-atoi(getenv(PROCESS_GRP)), SIGTERM);    
                 break;
             }
             else
             {
-                kill(-atoi(getenv("process_group_env")), SIGCONT); 
+                kill(-atoi(getenv(PROCESS_GRP)), SIGCONT); 
                 break;
             }
         }
@@ -277,7 +288,7 @@ int process_dir(int argc, char *argv[]){
                 else if(pid == 0){ //Filho investiga subdir
                     close(filepipe[READ]);
                     dup2(filepipe[WRITE], STDOUT_FILENO);
-                    setpgid(getpid(), atoi(getenv("process_group_env")));
+                    setpgid(getpid(), atoi(getenv(PROCESS_GRP)));
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
@@ -305,13 +316,13 @@ int process_dir(int argc, char *argv[]){
         somatorio = st_flags->bytes ? s.st_size : s.st_blocks*(BLOCOS_DU/blocos);
     }
 
-    if(getpid() == atoi(getenv("process_group_env"))){ // Escreve paizao 
+    if(getpid() == atoi(getenv(PROCESS_GRP))){ // Escreve paizao 
             char msgem[MAX_FILE_NAME];
             strcpy(msgem, path_copy);
             if(msgem[strlen(msgem)-1] == '/'){
                 msgem[strlen(msgem)-1] = '\0';
             }
-            printf("%.0f\t%s\n", ceil(somatorio), path_copy );
+            printf("%.0f\t%s\n", ceil(somatorio), path_copy);
     }
     else{ //  Escreve filho (pipe e tela)
         write(STDOUT_FILENO, &somatorio, sizeof(somatorio)); // Escreve no pipe
@@ -336,9 +347,9 @@ int process_dir(int argc, char *argv[]){
 int main (int argc, char *argv[])
 {
     
-    char pg[256];
+    char pg[255];
     sprintf(pg, "%d", getpid());  
-    setenv("process_group_env", pg, 0);
+    setenv(PROCESS_GRP, pg, 0);
     set_sinal();
 
     int stdoutbackup = dup(STDOUT_FILENO);
@@ -346,6 +357,21 @@ int main (int argc, char *argv[])
     sprintf(stdoutbackupaux, "%d", stdoutbackup);
     setenv(BACKUPSTDOUT, stdoutbackupaux, 0 );
 
+    int fd;
+    setenv(LOGFILE, "output.log", 0 ); // define output.log como env para logfile se nao existir
+    if(getpid() == atoi(getenv(PROCESS_GRP)))
+        fd = open(getenv(LOGFILE), O_WRONLY | O_CREAT | O_TRUNC | O_APPEND , S_IWUSR | S_IRUSR);
+    else
+        fd = open(getenv(LOGFILE), O_WRONLY | O_CREAT | O_APPEND , S_IWUSR | S_IRUSR);
+    char fdchar[2];
+    sprintf(fdchar, "%d", fd);
+    setenv(LOG_DESC, fdchar, 0);
+
+    struct timespec requireTime;
+    char time_nsec[255];
+    clock_gettime(CLOCK_MONOTONIC_RAW, &requireTime);
+    sprintf(time_nsec, "%ld", requireTime.tv_nsec);
+    setenv(STARTTIME, time_nsec, 0);
 
     process_dir(argc,argv);
 
