@@ -191,6 +191,7 @@ void sigint_handler(int signo){
     logfile_write("RECV_SIGNAL", "SIGINT");
     if( atoi(getenv(PROCESS_GRP)) != getpid() ){
         raise(SIGSTOP);
+        logfile_write("SEND_SIGNAL", "SIGINT");
     }
     if( atoi(getenv(PROCESS_GRP)) == getpid() ){
         while(1){
@@ -366,6 +367,7 @@ int main (int argc, char *argv[])
     char fdchar[2];
     sprintf(fdchar, "%d", fd);
     setenv(LOG_DESC, fdchar, 0);
+    //logfile_write("CREATE", "oi");
 
     struct timespec requireTime;
     char time_nsec[255];
