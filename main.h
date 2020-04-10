@@ -17,7 +17,7 @@
 #define MAX_FILE_NAME 1024
 #define BLOCOS_DU 512.0
 #define OK 0
-#define MAX_DEPTH_REACHED 0
+#define UNDEFINED_FLAG -5
 
 #define BACKUPSTDOUT "BackupStdout"
 

@@ -29,8 +29,8 @@ flags* createFlags()
     st_flags->bytes = false;
     st_flags->dereference = false;
     st_flags->separate_dirs = false;
-    st_flags->max_depth = -5;
-    st_flags->block_size = -1;
+    st_flags->max_depth = UNDEFINED_FLAG;
+    st_flags->block_size = UNDEFINED_FLAG;
     strcpy(st_flags->path , "./");
     return st_flags;
 }
@@ -156,7 +156,7 @@ void build_args(char* arg[], char* path, flags* st_flags)
         arg[i] = "-S";
         i++;
     }
-    if(st_flags->block_size != -1)
+    if(st_flags->block_size != UNDEFINED_FLAG)
     {
         arg[i] = "-B";
         i++;
@@ -165,7 +165,7 @@ void build_args(char* arg[], char* path, flags* st_flags)
         snprintf( arg[i], length + 1, "%d", st_flags->block_size );
         i++;
     }
-    if(st_flags->max_depth != -5)
+    if(st_flags->max_depth != UNDEFINED_FLAG)
     {
         int length = snprintf( NULL, 0, "%d", st_flags->max_depth);
         arg[i] = malloc(length + 13);
@@ -216,7 +216,7 @@ int process_dir(int argc, char *argv[]){
         write(STDERR_FILENO, "Parameter error\n", 16);
         return EXIT_FAILURE;
     }
-    float blocos = (st_flags->block_size == -1) ? 1024 : st_flags->block_size; // Padrao STAT
+    float blocos = (st_flags->block_size == UNDEFINED_FLAG) ? 1024 : st_flags->block_size; // Padrao STAT
     struct stat s;
     float somatorio = 0;
 
@@ -315,7 +315,7 @@ int process_dir(int argc, char *argv[]){
     }
     else{ //  Escreve filho (pipe e tela)
         write(STDOUT_FILENO, &somatorio, sizeof(somatorio)); // Escreve no pipe
-        if(st_flags->max_depth == -5 || st_flags->max_depth >= 0){ // Escreve filho na tela     
+        if(st_flags->max_depth == UNDEFINED_FLAG || st_flags->max_depth >= 0){ // Escreve filho na tela     
             char msgem[MAX_FILE_NAME];
             sprintf(msgem, "%.0f", ceil(somatorio)); 
             strcat(msgem, "\t");
