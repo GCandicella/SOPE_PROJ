@@ -35,22 +35,6 @@ flags* createFlags()
     return st_flags;
 }
 
-int get_blocks_bytes(const char* str)
-{
-    char num_str[MAX_FILE_NAME];
-    int size = 0;
-    for(int i = 0; str[i] != '\0'; i++)
-    {
-     
-            if(str[i] == '\t')
-                break;
-            num_str[size] = str[i];
-            size++;
-
-    }
-    return atoi(num_str);
-}
-
 bool numStr(char* str)
 {
     for(int i = 0; str[i] != '\0'; i++)
@@ -190,19 +174,27 @@ void sigint_handler(int signo){
     char c;
     logfile_write("RECV_SIGNAL", "SIGINT");
     if( atoi(getenv(PROCESS_GRP)) != getpid() ){
+        char aux[255];
+        sprintf(aux, "SIGSTOP (%d)", getpid());
+        logfile_write("SEND_SIGNAL", aux);
         raise(SIGSTOP);
-        logfile_write("SEND_SIGNAL", "SIGINT");
     }
     if( atoi(getenv(PROCESS_GRP)) == getpid() ){
         while(1){
             write(atoi(getenv(BACKUPSTDOUT)), "\nDeseja Encerrar(Y/n)? ", 22);
             read(STDIN_FILENO, &c, sizeof(c));
             if(c == 'Y' || c == 'y'){
+                char aux[255];
+                sprintf(aux, "SIGTERM (%d)", atoi(getenv(PROCESS_GRP)));
+                logfile_write("SEND_SIGNAL", aux);
                 kill(-atoi(getenv(PROCESS_GRP)), SIGTERM);    
                 break;
             }
             else
             {
+                char aux[255];
+                sprintf(aux, "SIGCONT (%d)", atoi(getenv(PROCESS_GRP)));
+                logfile_write("SEND_SIGNAL", aux);
                 kill(-atoi(getenv(PROCESS_GRP)), SIGCONT); 
                 break;
             }
@@ -306,6 +298,9 @@ int process_dir(int argc, char *argv[]){
                     close(filepipe[WRITE]);
                     float buffer;
                     read(filepipe[READ], &buffer, sizeof(buffer));
+                    char aux[255];
+                    sprintf(aux, "%.2f", buffer);
+                    logfile_write("RECV_PIPE", aux);
                     if(!st_flags->separate_dirs){
                         somatorio += buffer;
                     }
@@ -327,6 +322,9 @@ int process_dir(int argc, char *argv[]){
     }
     else{ //  Escreve filho (pipe e tela)
         write(STDOUT_FILENO, &somatorio, sizeof(somatorio)); // Escreve no pipe
+        char aux[255];
+        sprintf(aux, "%.2f", somatorio);
+        logfile_write("SEND_PIPE", aux);
         if(st_flags->max_depth == UNDEFINED_FLAG || st_flags->max_depth >= 0){ // Escreve filho na tela     
             char msgem[MAX_FILE_NAME];
             sprintf(msgem, "%.0f", ceil(somatorio)); 
