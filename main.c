@@ -311,7 +311,7 @@ int process_dir(int argc, char *argv[]){
             if(msgem[strlen(msgem)-1] == '/'){
                 msgem[strlen(msgem)-1] = '\0';
             }
-            printf("%.0f\t%s \n", ceil(somatorio), path_copy );
+            printf("%.0f\t%s\n", ceil(somatorio), path_copy );
     }
     else{ //  Escreve filho (pipe e tela)
         write(STDOUT_FILENO, &somatorio, sizeof(somatorio)); // Escreve no pipe
