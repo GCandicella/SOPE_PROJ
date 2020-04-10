@@ -184,28 +184,26 @@ void build_args(char* arg[], char* path, flags* st_flags)
 void sigint_handler(int signo){
     char c;
     //write_log()
-    kill(-atoi(getenv("process_group_env")), SIGUSR1);
-    while(1){
-        write(STDERR_FILENO, "\nDeseja Encerrar(Y/n)? ", 22);
-        read(STDIN_FILENO, &c, sizeof(c));
-        if(c == 'Y' || c == 'y'){
-            kill(-atoi(getenv("process_group_env")), SIGTERM);    
-            break;
-        }
-        else
-        {
-            kill(-atoi(getenv("process_group_env")), SIGCONT); 
-            break;
-        }
-    }
-}
-void sigsr1_handler(int signo){
-    pid_t ps = getpid();
-    if(atoi(getenv("process_group_env")) != ps){
-        //write_log()
+    if( atoi(getenv("process_group_env")) != getpid() ){
         raise(SIGSTOP);
     }
+    if( atoi(getenv("process_group_env")) == getpid() ){
+        while(1){
+            write(atoi(getenv(BACKUPSTDOUT)), "\nDeseja Encerrar(Y/n)? ", 22);
+            read(STDIN_FILENO, &c, sizeof(c));
+            if(c == 'Y' || c == 'y'){
+                kill(-atoi(getenv("process_group_env")), SIGTERM);    
+                break;
+            }
+            else
+            {
+                kill(-atoi(getenv("process_group_env")), SIGCONT); 
+                break;
+            }
+        }
+    }
 }
+
 void set_sinal(){
     struct sigaction intAction;
     intAction.sa_handler = sigint_handler;
@@ -214,15 +212,6 @@ void set_sinal(){
 
     if(sigaction(SIGINT, &intAction, NULL) < 0){
         fprintf(stderr, "Erro ao inicializar o sinal de interrupcao");
-    }
-
-    struct sigaction usr1Action;
-    usr1Action.sa_handler = sigsr1_handler;
-    sigemptyset(&usr1Action.sa_mask);
-    usr1Action.sa_flags = 0;
-
-    if(sigaction(SIGUSR1, &usr1Action, NULL) < 0){
-        fprintf(stderr, "Erro ao inicializar o sinal USR1");
     }
 }
 
@@ -334,7 +323,7 @@ int main (int argc, char *argv[])
 {
     
     char pg[256];
-    sprintf(pg, "process_group_env=%d", getpid());  
+    sprintf(pg, "%d", getpid());  
     setenv("process_group_env", pg, 0);
     set_sinal();
 
