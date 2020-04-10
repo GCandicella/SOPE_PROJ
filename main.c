@@ -263,13 +263,34 @@ int process_dir(int argc, char *argv[]){
                 fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);   
                 return EXIT_FAILURE;
             }
-            if(S_ISBLK(s_item.st_mode) && st_flags->dereference) continue;
+            if(S_ISLNK(s_item.st_mode) && st_flags->dereference) //Quando é link simbólico
+            {
+                char *link_path;
+                link_path = realpath(listadir[i], NULL);
+                if(errno != 0)
+                {
+                    fprintf(stderr,"simpledu: não foi possível acessar '%s'\n", listadir[i]);
+                    free(link_path);
+                    continue;
+                }
+
+                struct stat s_item_link;
+                if (lstat(link_path, &s_item_link) != 0)
+                {
+                    fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);   
+                    return EXIT_FAILURE;
+                }
+                float b = st_flags->bytes ? s_item_link.st_size : s_item_link.st_blocks*(BLOCOS_DU/blocos); 
+                printf("%.0f\t%s\n", b , listadir[i] );
+                free(link_path);
+
+            }
             else if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
                 somatorio += st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
                 if(st_flags->all)
                 {
                     int b = st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
-                    fprintf(stderr,"%.0f\t%s\n", ceil(b), listadir[i]);
+                    printf("%.0f\t%s\n", ceil(b), listadir[i]);
                 
                 }
             }
@@ -342,6 +363,39 @@ int process_dir(int argc, char *argv[]){
     
     free(st_flags);
     return EXIT_SUCCESS;
+}
+
+char* cat_args(int argc, char* argv[])
+{
+    flags* st_flags = createFlags();
+    if(parseFlags(argc, argv, st_flags) != EXIT_SUCCESS)
+    {
+        write(STDERR_FILENO, "Parameter error\n", 16);
+        return "err";
+    }
+
+    int size = 1;
+    for(int i = 0; i < argc; i++)
+    {
+        if(strcmp(st_flags->path,argv[i]) == 0) continue;
+        for(int j = 0; argv[i][j] != '\0'; j++)
+        {
+            size ++;
+        }
+        size+=2;
+    }
+
+    char* str = malloc(size);
+    str[0] = '(';
+    for(int i = 0; i < argc; i++)
+    {
+        if(strcmp(st_flags->path,argv[i]) == 0) continue;
+        strcat(str,argv[i]);
+        if(i != argc-1) strcat(str,", ");
+    }
+    strcat(str,")");
+    str[size] = '\0';
+    return str;
 }
 
 int main (int argc, char *argv[])
