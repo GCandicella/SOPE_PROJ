@@ -44,17 +44,6 @@ bool numStr(char* str)
     return true;
 }
 
-bool logfile_write(const char *evento, const char * info){
-    struct timespec requestTime;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &requestTime);
-
-    char mensagem[MAX_FILE_NAME];
-    //instant – pid – action – info
-    sprintf(mensagem, "%.2f - %d - %s - %s\n", (requestTime.tv_nsec - atoi(getenv(STARTTIME)))/1000000.0 , getpid(), evento, info);
-    write(atoi(getenv(LOG_DESC)), mensagem, strlen(mensagem));
-    return EXIT_SUCCESS;
-}
-
 int parseFlags(int argc, char *argv[], flags* st_flags)
 {
     for(int i = 1; i < argc; i++)
@@ -179,7 +168,7 @@ void sigint_handler(int signo){
         logfile_write("SEND_SIGNAL", aux);
         raise(SIGSTOP);
     }
-    if( atoi(getenv(PROCESS_GRP)) == getpid() ){
+    if( atoi(getenv("process_group_env")) == getpid() ){
         while(1){
             write(atoi(getenv(BACKUPSTDOUT)), "\nDeseja Encerrar(Y/n)? ", 22);
             read(STDIN_FILENO, &c, sizeof(c));
@@ -262,14 +251,34 @@ int process_dir(int argc, char *argv[]){
                 fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);   
                 return EXIT_FAILURE;
             }
-            if(S_ISBLK(s_item.st_mode) && st_flags->dereference) continue;
+            if(S_ISLNK(s_item.st_mode) && st_flags->dereference) //Quando é link simbólico
+            {
+                char *link_path;
+                link_path = realpath(listadir[i], NULL);
+                if(errno != OK)
+                {
+                    fprintf(stderr,"du: não foi possível acessar '%s'\n", listadir[i]);
+                    free(link_path);
+                    continue;
+                }
+                    
+                struct stat s_item_link;
+                if (lstat(link_path, &s_item_link) != 0)
+                {
+                    fprintf(stderr, "ERRO ao tentar obter stat de %s\n", listadir[i]);   
+                    return EXIT_FAILURE;
+                }
+                float b = st_flags->bytes ? s_item_link.st_size : s_item_link.st_blocks*(BLOCOS_DU/blocos); 
+                printf("%.0f\t%s\n", b , listadir[i] );
+                free(link_path);
+
+            }
             else if( !S_ISDIR(s_item.st_mode) ){ // Arquivo Simples
                 somatorio += st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
                 if(st_flags->all)
                 {
                     int b = st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
                     fprintf(stderr,"%.0f\t%s\n", ceil(b), listadir[i]);
-                
                 }
             }
             else{ // E' um subdiretorio
@@ -281,7 +290,7 @@ int process_dir(int argc, char *argv[]){
                 else if(pid == 0){ //Filho investiga subdir
                     close(filepipe[READ]);
                     dup2(filepipe[WRITE], STDOUT_FILENO);
-                    setpgid(getpid(), atoi(getenv(PROCESS_GRP)));
+                    setpgid(getpid(), atoi(getenv("process_group_env")));
                     char new_path[MAX_FILE_NAME*n];
                     strcpy(new_path, listadir[i]);
                     strcat(new_path, "/");
@@ -312,13 +321,13 @@ int process_dir(int argc, char *argv[]){
         somatorio = st_flags->bytes ? s.st_size : s.st_blocks*(BLOCOS_DU/blocos);
     }
 
-    if(getpid() == atoi(getenv(PROCESS_GRP))){ // Escreve paizao 
+    if(getpid() == atoi(getenv("process_group_env"))){ // Escreve paizao 
             char msgem[MAX_FILE_NAME];
             strcpy(msgem, path_copy);
             if(msgem[strlen(msgem)-1] == '/'){
                 msgem[strlen(msgem)-1] = '\0';
             }
-            printf("%.0f\t%s\n", ceil(somatorio), path_copy);
+            printf("%.0f\t%s\n", ceil(somatorio), path_copy );
     }
     else{ //  Escreve filho (pipe e tela)
         write(STDOUT_FILENO, &somatorio, sizeof(somatorio)); // Escreve no pipe
@@ -343,12 +352,46 @@ int process_dir(int argc, char *argv[]){
     return EXIT_SUCCESS;
 }
 
+char* cat_args(int argc, char* argv[])
+{
+    flags* st_flags = createFlags();
+    if(parseFlags(argc, argv, st_flags) != EXIT_SUCCESS)
+    {
+        write(STDERR_FILENO, "Parameter error\n", 16);
+        return "err";
+    }
+
+    int size = 1;
+    for(int i = 0; i < argc; i++)
+    {
+        if(strcmp(st_flags->path,argv[i]) == 0) continue;
+        for(int j = 0; argv[i][j] != '\0'; j++)
+        {
+            size ++;
+        }
+        size+=2;
+    }
+
+    char* str = malloc(size);
+    str[0] = '(';
+    for(int i = 0; i < argc; i++)
+    {
+        if(strcmp(st_flags->path,argv[i]) == 0) continue;
+        strcat(str,argv[i]);
+        if(i != argc-1) strcat(str,", ");
+    }
+    strcat(str,")");
+    str[size] = '\0';
+    return str;
+}
+
 int main (int argc, char *argv[])
 {
-    
-    char pg[255];
+    char* a = cat_args(argc,argv);
+    printf("%s\n", a);
+/*    char pg[256];
     sprintf(pg, "%d", getpid());  
-    setenv(PROCESS_GRP, pg, 0);
+    setenv("process_group_env", pg, 0);
     set_sinal();
 
     int stdoutbackup = dup(STDOUT_FILENO);
@@ -356,24 +399,8 @@ int main (int argc, char *argv[])
     sprintf(stdoutbackupaux, "%d", stdoutbackup);
     setenv(BACKUPSTDOUT, stdoutbackupaux, 0 );
 
-    int fd;
-    setenv(LOGFILE, "output.log", 0 ); // define output.log como env para logfile se nao existir
-    if(getpid() == atoi(getenv(PROCESS_GRP)))
-        fd = open(getenv(LOGFILE), O_WRONLY | O_CREAT | O_TRUNC | O_APPEND , S_IWUSR | S_IRUSR);
-    else
-        fd = open(getenv(LOGFILE), O_WRONLY | O_CREAT | O_APPEND , S_IWUSR | S_IRUSR);
-    char fdchar[2];
-    sprintf(fdchar, "%d", fd);
-    setenv(LOG_DESC, fdchar, 0);
-    //logfile_write("CREATE", "oi");
-
-    struct timespec requireTime;
-    char time_nsec[255];
-    clock_gettime(CLOCK_MONOTONIC_RAW, &requireTime);
-    sprintf(time_nsec, "%ld", requireTime.tv_nsec);
-    setenv(STARTTIME, time_nsec, 0);
 
     process_dir(argc,argv);
-
-    return EXIT_SUCCESS;
+    
+    return EXIT_SUCCESS;*/
 }
