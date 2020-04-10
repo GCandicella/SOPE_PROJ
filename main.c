@@ -292,8 +292,12 @@ int process_dir(int argc, char *argv[]){
                 somatorio += st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
                 if(st_flags->all){
                     int b = st_flags->bytes ? s_item.st_size : s_item.st_blocks*(BLOCOS_DU/blocos);
-                    printf("--> %.0f\t%s\n", ceil(b), listadir[i]);
-                
+                    printf("%.0f\t%s\n", ceil(b), listadir[i]);
+                    if(getpid() != atoi(getenv(PROCESS_GRP))){
+                        char aux[255];
+                        sprintf(aux, "%.0f\t%s\n", ceil(b), listadir[i]);
+                        write(atoi(getenv(BACKUPSTDOUT)), aux, strlen(aux));
+                    }                
                 }
             }
             else{ // E' um subdiretorio
